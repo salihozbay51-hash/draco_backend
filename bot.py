@@ -5,7 +5,7 @@ from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 API_BASE = os.getenv("API_BASE", "https://dracobackend-production.up.railway.app").rstrip("/")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+BOT_TOKEN = os.getenv("8526355313:AAFuyQ7hkbQ8AC3e4FinkGdC-cg91rmG--U", "")
 
 def create_order(telegram_id: str, dragon_code: str) -> dict:
     r = requests.post(
