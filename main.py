@@ -41,7 +41,10 @@ app = FastAPI(title="Draco Backend")
 
 @app.on_event("startup")
 def _start_watcher():
+    print("[DB] initializing...")
     init_db()
+    print("[DB] ready")
+    
     print("[WATCHER] startup event çalıştı")
     threading.Thread(target=_watcher_loop, daemon=True).start()
 
@@ -1176,6 +1179,19 @@ def _watcher_loop():
     if not deposit_address:
         print("[WATCHER] TRON_DEPOSIT_ADDRESS yok. Watcher durduruldu.")
         return
+    
+        # --- DB hazır mı? (purchase_orders tablosu oluşana kadar bekle) ---
+    import time
+    while True:
+        try:
+            conn = get_conn()
+            conn.execute("SELECT 1 FROM purchase_orders LIMIT 1")
+            conn.close()
+            print("[WATCHER] DB hazır, watcher devam ediyor ✅")
+            break
+        except Exception as e:
+            print(f"[WATCHER] DB henüz hazır değil, 2 sn bekleniyor... ({e})")
+            time.sleep(2)
 
     while not _stop_watcher.is_set():
         try:
