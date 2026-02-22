@@ -4,8 +4,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-API_BASE = os.getenv("API_BASE", "https://dracobackend-production.up.railway.app").rstrip("/")
-BOT_TOKEN = os.getenv("8526355313:AAFuyQ7hkbQ8AC3e4FinkGdC-cg91rmG--U", "")
+API_BASE = os.getenv("BACKEND_URL", "https://dracobackend-production.up.railway.app").rstrip("/")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 
 def create_order(telegram_id: str, dragon_code: str) -> dict:
     r = requests.post(
@@ -43,18 +43,13 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         order = create_order(telegram_id=telegram_id, dragon_code=dragon_code)
-    except requests.HTTPError as e:
+    except Exception as e:
         await update.message.reply_text(f"❌ Sipariş oluşturulamadı.\nHata: {e}")
         return
-    except Exception as e:
-        await update.message.reply_text(f"❌ Beklenmeyen hata: {e}")
-        return
 
-    # main.py'ında muhtemelen bu alanlar var:
-    # id / expected_amount_usdt / pay_to / expires_at
     order_id = order.get("id") or order.get("order_id")
     amount = order.get("expected_amount_usdt") or order.get("expected_amount")
-    pay_to = order.get("pay_to") or os.getenv("TRON_DEPOSIT_ADDRESS", "")
+    pay_to = order.get("pay_to") or ""
     expires_at = order.get("expires_at", "")
 
     text = (
@@ -65,7 +60,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📬 Adres: `{pay_to}`\n"
         f"⏳ Son: {expires_at}\n\n"
         f"🔎 Durum kontrol: /status {order_id}\n\n"
-        "⚠️ *Tam tutarı* gönder (eksik/fazla olursa eşleşmeyebilir)."
+        "⚠️ *Tam tutarı* gönder."
     )
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -82,12 +77,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         o = get_order(order_id)
-    except requests.HTTPError as e:
-        # 404 vs.
-        await update.message.reply_text(f"❌ Order bulunamadı veya hata.\nHata: {e}")
-        return
     except Exception as e:
-        await update.message.reply_text(f"❌ Beklenmeyen hata: {e}")
+        await update.message.reply_text(f"❌ Order bulunamadı veya hata.\nHata: {e}")
         return
 
     st = (o.get("status") or "").lower()
@@ -117,7 +108,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🐲 Dragon: *{dragon_code}*\n"
             f"💳 Tutar: *{amount} USDT*\n"
             f"⏳ Son: {expires_at}\n\n"
-            "Birkaç dakika sonra tekrar: /status {order_id}"
+            f"Birkaç dakika sonra tekrar: /status {order_id}"
         )
 
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
