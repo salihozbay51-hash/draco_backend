@@ -34,13 +34,14 @@ USDT_CONTRACT = os.getenv(
     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
 ).strip()
 
-from db import init_db, get_conn
+from db import get_conn, init_db
 from models import DRAGONS, MINIK
 
 app = FastAPI(title="Draco Backend")
 
 @app.on_event("startup")
 def _start_watcher():
+    init_db()
     print("[WATCHER] startup event çalıştı")
     threading.Thread(target=_watcher_loop, daemon=True).start()
 
