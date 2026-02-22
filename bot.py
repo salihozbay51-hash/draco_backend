@@ -4,8 +4,8 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-API_BASE = os.getenv("BACKEND_URL", "https://dracobackend-production.up.railway.app").rstrip("/")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+API_BASE = os.getenv("API_BASE", "https://dracobackend-production.up.railway.app").rstrip("/")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 def create_order(telegram_id: str, dragon_code: str) -> dict:
     r = requests.post(
