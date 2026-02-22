@@ -474,6 +474,29 @@ def list_user_dragons(telegram_id: str):
     finally:
         conn.close()
 
+@app.get("/shop/orders/{order_id}")
+def get_order(order_id: int):
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT id, dragon_code, expected_amount, status, expires_at, paid_txid "
+            "FROM purchase_orders WHERE id = ?",
+            (order_id,),
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Order bulunamadı")
+
+        return {
+            "id": row["id"],
+            "dragon_code": row["dragon_code"],
+            "expected_amount_usdt": row["expected_amount"],
+            "status": row["status"],   # awaiting / paid / expired
+            "expires_at": row["expires_at"],
+            "paid_txid": row["paid_txid"],
+        }
+    finally:
+        conn.close()
 
 
    # --------- AY -> USDT CONVERT ---------
