@@ -4,8 +4,11 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-API_BASE = os.getenv("API_BASE", "https://dracobackend-production.up.railway.app").rstrip("/")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+API_BASE = (
+    os.getenv("BACKEND_URL")
+    or os.getenv("API_BASE")
+    or "https://dracobackend-production.up.railway.app"
+).rstrip("/")
 
 def create_order(telegram_id: str, dragon_code: str) -> dict:
     r = requests.post(
@@ -113,6 +116,9 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
+import time
+from telegram.error import Conflict
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN env yok. Önce BOT_TOKEN ayarla.")
@@ -123,7 +129,11 @@ def main():
     app.add_handler(CommandHandler("status", status))
 
     print("Bot başladı.")
-    app.run_polling(close_loop=False)
 
-if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            app.run_polling(drop_pending_updates=True, close_loop=False)
+        except Conflict as e:
+            print(f"[BOT] Conflict algılandı, 10 sn bekleniyor: {e}")
+            time.sleep(10)
+            continue
