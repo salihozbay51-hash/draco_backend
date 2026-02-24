@@ -42,6 +42,10 @@ app = FastAPI(title="Draco Backend")
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 @app.on_event("startup")
 def _start_watcher():
     print("[DB] initializing...")
