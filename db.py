@@ -1,7 +1,7 @@
 ﻿import os
 import sqlite3
 
-DB_PATH = os.getenv("DB_PATH", "draco.db")
+DB_PATH = os.getenv("DB_PATH", "draco.db")   # default draco.db
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -22,7 +22,7 @@ def init_db():
         )
         """)
 
-        # USER DRAGONS
+                # USER DRAGONS
         conn.execute("""
         CREATE TABLE IF NOT EXISTS user_dragons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,11 +32,20 @@ def init_db():
             purchased_usdt REAL DEFAULT 0,
             started_at TEXT,
             expires_at TEXT,
-            is_active INTEGER DEFAULT 1
+            is_active INTEGER DEFAULT 1,
+            level INTEGER DEFAULT 1,
+            xp INTEGER DEFAULT 0
         )
         """)
 
-        # PURCHASE ORDERS
+        # USER DRAGONS tablosunda level/xp yoksa ekle (migration gibi)
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(user_dragons)").fetchall()]
+        if "level" not in cols:
+            conn.execute("ALTER TABLE user_dragons ADD COLUMN level INTEGER DEFAULT 1")
+        if "xp" not in cols:
+            conn.execute("ALTER TABLE user_dragons ADD COLUMN xp INTEGER DEFAULT 0")
+
+           # PURCHASE ORDERS
         conn.execute("""
         CREATE TABLE IF NOT EXISTS purchase_orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

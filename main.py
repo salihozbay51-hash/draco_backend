@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from random import randint
+from db import init_db
 
 # .evn isimli bir dosya kullanıyorsan ismini buraya yazmalısın
 # Eğer dosya adını .env yaptıysan parantez içini boş bırakabilirsin: load_dotenv()
@@ -97,8 +98,8 @@ def _grant_minik_if_missing(conn, user_id: int):
     conn.execute(
         """
         INSERT INTO user_dragons
-        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active)
-        VALUES (?, ?, ?, ?, ?, 1)
+        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
+        VALUES (?, ?, ?, ?, ?, 1, 1, 0)
         """,
         (user_id, MINIK.code, MINIK.eggs_per_day, now_str, expires),
     )
@@ -232,14 +233,16 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
     expires = (now + timedelta(days=90)).isoformat()
     now_str = now.isoformat()
 
+    # main.py içindeki 233. satır civarı
     conn.execute(
         """
         INSERT INTO user_dragons
-        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active)
-        VALUES (?, ?, ?, ?, ?, 1)
+        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
+        VALUES (?, ?, ?, ?, ?, 1, 1, 0)
         """,
         (user_id, dragon_code, EGGS_PER_DAY[dragon_code], now_str, expires),
-    )    
+    )
+    
 def production_multiplier(level: int) -> float:
     """
     Level 1 = bonus yok
@@ -821,19 +824,19 @@ def buy_dragon(telegram_id: str, dragon_code: str):
         new_balance = usdt_balance - price
 
         # 4. Veritabanına Kayıt (Tüm sütunlar eksiksiz)
+        # main.py içindeki 703. satır civarı
         conn.execute("""
             INSERT INTO user_dragons
-            (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active, level, xp)
+            VALUES (?, ?, ?, ?, ?, ?, 1, 1, 0)
         """, (
             user["id"],
-            dragon.code,          # models.py'den geliyor
-            dragon.eggs_per_day,   # models.py'den geliyor (Kritik!)
+            dragon.code,
+            dragon.eggs_per_day,
             price,
             started.isoformat(),
             expires.isoformat()
         ))
-
         conn.execute("UPDATE users SET usdt_balance = ? WHERE id = ?", (new_balance, user["id"]))
         conn.commit()
 
@@ -950,7 +953,7 @@ def user_profile(telegram_id: str):
                     xp=int(d.get("xp") or 0),
             ))
             
-            return ProfileResponse(
+        return ProfileResponse(
             telegram_id=user["telegram_id"],
             usdt_balance=usdt_balance,
             stored_eggs_ay=stored,
