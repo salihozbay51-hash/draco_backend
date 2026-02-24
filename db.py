@@ -1,43 +1,42 @@
 ﻿import os
-import sqlite3
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
-DB_PATH = os.getenv("DB_PATH", "draco.db")   # default draco.db
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine)
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return engine.connect()
 
 def init_db():
-    conn = get_conn()
-    try:
-        # USERS
-        conn.execute("""
+    with engine.begin() as conn:
+        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             telegram_id TEXT UNIQUE NOT NULL,
             eggs_ay INTEGER DEFAULT 0,
-            usdt_balance REAL DEFAULT 0,
+            usdt_balance FLOAT DEFAULT 0,
             last_collect_at TEXT
         )
-        """)
+        """))
 
-                # USER DRAGONS
-        conn.execute("""
+        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS user_dragons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             dragon_code TEXT NOT NULL,
             eggs_per_day INTEGER NOT NULL,
-            purchased_usdt REAL DEFAULT 0,
+            purchased_usdt FLOAT DEFAULT 0,
             started_at TEXT,
             expires_at TEXT,
             is_active INTEGER DEFAULT 1,
             level INTEGER DEFAULT 1,
             xp INTEGER DEFAULT 0
         )
-        """)
-
+        """))
+        
         # USER DRAGONS tablosunda level/xp yoksa ekle (migration gibi)
         cols = [r["name"] for r in conn.execute("PRAGMA table_info(user_dragons)").fetchall()]
         if "level" not in cols:
