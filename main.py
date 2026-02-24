@@ -39,6 +39,8 @@ from models import DRAGONS, MINIK
 
 app = FastAPI(title="Draco Backend")
 
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+
 @app.on_event("startup")
 def _start_watcher():
     print("[DB] initializing...")
@@ -238,6 +240,108 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
         """,
         (user_id, dragon_code, EGGS_PER_DAY[dragon_code], now_str, expires),
     )    
+def production_multiplier(level: int) -> float:
+    """
+    Level 1 = bonus yok
+    Her level için +%5 üretim
+    """
+    level = int(level or 1)
+    if level < 1:
+        level = 1
+    return 1.0 + (level - 1) * 0.05
+
+
+def upgrade_cost_eggs(level: int) -> int:
+    """
+    Upgrade maliyeti: 50 * level
+    """
+    level = int(level or 1)
+    if level < 1:
+        level = 1
+    return 50 * level
+
+def xp_gain_from_collect(eggs: int) -> int:
+    return int(eggs * 0.10)
+
+def xp_needed_for_level(level: int) -> int:
+    level = int(level or 1)
+    return 100 * level
+
+def distribute_xp(total_xp: int, per_dragon_pending: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """
+    per_dragon_pending: [(dragon_id, pending_eggs), ...]
+    return: [(dragon_id, xp_share), ...]
+    """
+    total_pending = sum(p for _, p in per_dragon_pending)
+    if total_xp <= 0 or total_pending <= 0:
+        return [(dragon_id, 0) for dragon_id, _ in per_dragon_pending]
+
+    # Oransal dağıtım (floor)
+    shares = []
+    used = 0
+    for dragon_id, p in per_dragon_pending:
+        s = int(total_xp * (p / total_pending))
+        shares.append([dragon_id, s])
+        used += s
+
+    # Kalan XP'yi (rounding farkı) en çok üretenlere dağıt
+    remaining = total_xp - used
+    if remaining > 0:
+        shares.sort(key=lambda x: next(p for did, p in per_dragon_pending if did == x[0]), reverse=True)
+        i = 0
+        while remaining > 0 and shares:
+            shares[i % len(shares)][1] += 1
+            remaining -= 1
+            i += 1
+
+    return [(did, s) for did, s in shares]
+
+def _dragon_pending(d: dict, last_collect_at, now) -> int:
+    code = d["dragon_code"]
+    dragon_type = DRAGONS.get(code)
+    if not dragon_type:
+        return 0
+
+    started = parse_dt(d["started_at"]) or now
+    expires = parse_dt(d["expires_at"]) or now
+
+    start = started
+    if last_collect_at and last_collect_at > start:
+        start = last_collect_at
+
+    end = now if now < expires else expires
+    if end <= start:
+        return 0
+
+    seconds = (end - start).total_seconds()
+    days = seconds / 86400.0
+    return int(days * dragon_type.eggs_per_day)
+
+def distribute_xp(total_xp: int, per_dragon_pending: list[tuple[int, int]]) -> dict[int, int]:
+    total_pending = sum(p for _, p in per_dragon_pending)
+    if total_pending <= 0 or total_xp <= 0:
+        return {dragon_id: 0 for dragon_id, _ in per_dragon_pending}
+
+    xp_map = {}
+    used = 0
+
+    for dragon_id, pending in per_dragon_pending:
+        share = int(total_xp * (pending / total_pending))
+        xp_map[dragon_id] = share
+        used += share
+
+    # rounding farkını en çok üretene ver
+    remaining = total_xp - used
+    if remaining > 0:
+        per_dragon_pending.sort(key=lambda x: x[1], reverse=True)
+        i = 0
+        while remaining > 0:
+            did = per_dragon_pending[i % len(per_dragon_pending)][0]
+            xp_map[did] += 1
+            remaining -= 1
+            i += 1
+
+    return xp_map
 
 # ===== DEBUG ENDPOINTS =====
 
@@ -258,6 +362,37 @@ def debug_add_usdt(telegram_id: str, amount_usdt: float = 10):
     finally:
         conn.close()
 
+@app.post("/debug/users/{telegram_id}/rewind_collect")
+def debug_rewind_collect(telegram_id: str, hours: int = 24):
+    # Güvenlik: prod'da kapalı kalsın
+    if not DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    telegram_id = telegram_id.strip()
+    conn = get_conn()
+    try:
+        user = _get_user_by_telegram(conn, telegram_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+        now = utcnow()
+        new_last = (now - timedelta(hours=int(hours))).isoformat()
+
+        conn.execute(
+            "UPDATE users SET last_collect_at = ? WHERE id = ?",
+            (new_last, int(user["id"])),
+        )
+        conn.commit()
+
+        return {
+            "ok": True,
+            "telegram_id": telegram_id,
+            "hours_rewound": int(hours),
+            "last_collect_at": new_last,
+        }
+    finally:
+        conn.close()
+
 def _deactivate_expired_dragons(conn, user_id: int, now: datetime) -> int:
     """
     expires_at geçmiş olan ejderhaları pasifleştir (is_active=0).
@@ -275,7 +410,14 @@ def _deactivate_expired_dragons(conn, user_id: int, now: datetime) -> int:
 
 def _get_active_dragons(conn, user_id: int):
     cur = conn.execute("""
-        SELECT id, dragon_code, started_at, expires_at, is_active
+        SELECT
+            id,
+            dragon_code,
+            started_at,
+            expires_at,
+            is_active,
+            level,
+            xp
         FROM user_dragons
         WHERE user_id = ? AND is_active = 1
         ORDER BY id ASC
@@ -305,14 +447,28 @@ class CollectResponse(BaseModel):
     new_total_eggs_ay: int
     collected_at: str
 
+
+class UpgradeResponse(BaseModel):
+    telegram_id: str
+    dragon_id: int
+    old_level: int
+    new_level: int
+    cost_eggs: int
+    remaining_eggs_ay:int
+
+
 # --------- Core production logic ---------
+def production_multiplier(level: int) -> float:
+    """
+    Level 1 = bonus yok.
+    Level 2 = +%5, Level 3 = +%10 ...
+    """
+    level = int(level or 1)
+    if level < 1:
+        level = 1
+    return 1.0 + (level - 1) * 0.05
+
 def compute_pending_eggs(dragons: list[dict], last_collect_at: datetime | None, now: datetime) -> int:
-    """
-    Her ejderha için:
-    - üretim başlangıcı: max(last_collect_at, started_at)
-    - üretim bitişi: min(now, expires_at)
-    - süre (gün) * eggs_per_day
-    """
     total = 0
     for d in dragons:
         code = d["dragon_code"]
@@ -334,9 +490,15 @@ def compute_pending_eggs(dragons: list[dict], last_collect_at: datetime | None, 
 
         seconds = (end - start).total_seconds()
         days = seconds / 86400.0
-        produced = int(days * dragon_type.eggs_per_day)
+
+        level = int(d.get("level") or 1)
+        mult = production_multiplier(level)
+
+        produced = int(days * int(dragon_type.eggs_per_day) * mult)
+
         if produced > 0:
             total += produced
+
     return total
 
 # --------- Routes ---------
@@ -416,20 +578,54 @@ def collect_eggs(telegram_id: str):
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı. Önce /users/register çağır.")
 
         now = utcnow()
+
+        # Süresi dolan dragonları pasifleştir
         _deactivate_expired_dragons(conn, user["id"], now)
         conn.commit()
 
+        # Güncel aktif dragonları çek
         dragons = _get_active_dragons(conn, user["id"])
+
         last_collect = parse_dt(user["last_collect_at"])
         stored = int(user["eggs_ay"] or 0)
 
         pending = compute_pending_eggs(dragons, last_collect, now)
         new_total = stored + pending
 
+        # Toplam XP
+        total_xp = xp_gain_from_collect(pending)
+
+        # Dragon bazında pending hesapla
+        per_dragon_pending = []
+        for d in dragons:
+            d_pending = _dragon_pending(d, last_collect, now)
+            per_dragon_pending.append((int(d["id"]), int(d_pending)))
+
+        # XP'yi üretime göre dağıt
+        xp_shares = dict(distribute_xp(total_xp, per_dragon_pending))
+
+        for d in dragons:
+            gain = int(xp_shares.get(int(d["id"]), 0))
+
+            current_level = int(d.get("level") or 1)
+            current_xp = int(d.get("xp") or 0)
+
+            new_xp = current_xp + gain
+
+            while new_xp >= xp_needed_for_level(current_level):
+                new_xp -= xp_needed_for_level(current_level)
+                current_level += 1
+
+            conn.execute(
+                "UPDATE user_dragons SET level = ?, xp = ? WHERE id = ?",
+                (current_level, new_xp, d["id"])
+            )
+        # Kullanıcı eggs + last_collect güncelle
         conn.execute(
             "UPDATE users SET eggs_ay = ?, last_collect_at = ? WHERE id = ?",
             (new_total, now.isoformat(), user["id"])
         )
+
         conn.commit()
 
         return CollectResponse(
@@ -440,7 +636,7 @@ def collect_eggs(telegram_id: str):
         )
     finally:
         conn.close()
-
+        
 class DragonItem(BaseModel):
     id: int
     dragon_code: str
@@ -454,7 +650,14 @@ class DragonsListResponse(BaseModel):
 
 def _get_all_dragons(conn, user_id: int):
     cur = conn.execute("""
-        SELECT id, dragon_code, started_at, expires_at, is_active
+        SELECT
+            id,
+            dragon_code,
+            started_at,
+            expires_at,
+            is_active,
+            level,
+            xp
         FROM user_dragons
         WHERE user_id = ?
         ORDER BY id ASC
@@ -656,6 +859,8 @@ class ProfileDragonItem(BaseModel):
     is_active: int
     remaining_days: int
     pending_eggs_ay: int
+    level: int
+    xp: int
 
 class ProfileResponse(BaseModel):
     telegram_id: str
@@ -730,19 +935,22 @@ def user_profile(telegram_id: str):
 
             d_pending = _dragon_pending(d, last_collect, now)
 
-            out_dragons.append(ProfileDragonItem(
-                id=int(d["id"]),
-                dragon_code=code,
-                eggs_per_day=eggs_per_day,
-                price_usdt=price_usdt,
-                started_at=d["started_at"],
-                expires_at=d["expires_at"],
-                is_active=int(d["is_active"]),
-                remaining_days=remaining_days,
-                pending_eggs_ay=d_pending
+            out_dragons.append(
+                ProfileDragonItem(
+                    id=d["id"],
+                    dragon_code=d["dragon_code"],
+                    eggs_per_day=dragon_type.eggs_per_day,
+                    price_usdt=dragon_type.price_usdt,
+                    started_at=d["started_at"],
+                    expires_at=d["expires_at"],
+                    is_active=d["is_active"],
+                    remaining_days=remaining_days,
+                    pending_eggs_ay=d_pending,
+                    level=int(d.get("level") or 1),
+                    xp=int(d.get("xp") or 0),
             ))
-
-        return ProfileResponse(
+            
+            return ProfileResponse(
             telegram_id=user["telegram_id"],
             usdt_balance=usdt_balance,
             stored_eggs_ay=stored,
@@ -1225,3 +1433,61 @@ def _watcher_loop():
             print("[WATCHER] HATA:", e)
 
         time.sleep(interval)
+
+
+@app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade", response_model=UpgradeResponse)
+def upgrade_dragon(telegram_id: str, dragon_id: int):
+    telegram_id = telegram_id.strip()
+    conn = get_conn()
+    try:
+        user = _get_user_by_telegram(conn, telegram_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+        # Dragon var mı ve kullanıcıya mı ait
+        d = conn.execute("""
+            SELECT id, level
+            FROM user_dragons
+            WHERE id = ? AND user_id = ? AND is_active = 1
+        """, (dragon_id, user["id"])).fetchone()
+
+        if not d:
+            raise HTTPException(status_code=404, detail="Ejderha bulunamadı")
+
+        old_level = int(d["level"] or 1)
+        cost = upgrade_cost_eggs(old_level)
+
+        stored_eggs = int(user["eggs_ay"] or 0)
+
+        if stored_eggs < cost:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Yetersiz yumurta. Gerekli: {cost}, Sende: {stored_eggs}"
+            )
+
+        new_level = old_level + 1
+        new_eggs = stored_eggs - cost
+
+        conn.execute(
+            "UPDATE users SET eggs_ay = ? WHERE id = ?",
+            (new_eggs, user["id"])
+        )
+
+        conn.execute(
+            "UPDATE user_dragons SET level = ? WHERE id = ?",
+            (new_level, dragon_id)
+        )
+
+        conn.commit()
+
+        return UpgradeResponse(
+            telegram_id=user["telegram_id"],
+            dragon_id=int(dragon_id),
+            old_level=old_level,
+            new_level=new_level,
+            cost_eggs=cost,
+            remaining_eggs_ay=new_eggs
+        )
+
+    finally:
+        conn.close()
