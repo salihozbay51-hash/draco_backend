@@ -155,76 +155,85 @@ def _as_decimal_amount(tx: dict) -> float:
             return 0.0
 
 def _match_order_by_amount(conn, amount_usdt: float) -> dict | None:
-    # 2 hane yuvarlama: B1 unique cents mantığı
     amount_2 = round(amount_usdt + 1e-9, 2)
-
     now_iso = utcnow().isoformat()
-    cur = conn.execute(
-        """
-        SELECT id, user_id, dragon_code, expected_amount, expires_at
-        FROM purchase_orders
-        WHERE status='awaiting_payment' AND expires_at > ?
-        """,
-        (now_iso,),
-    )
-    rows = cur.fetchall()
-    for r in rows:
-        expected = float(r["expected_amount"])
-        if abs(expected - amount_2) < 0.0001:
-            return dict(r)
-    return None
 
-def _process_tx_if_matches(conn, tx: dict) -> bool:
+    cur = conn.execute(
+        text("""
+            SELECT id, user_id, dragon_code, expected_amount, expires_at
+            FROM purchase_orders
+            WHERE status = 'awaiting_payment'
+              AND expires_at > :now
+              AND expected_amount = :amt
+            ORDER BY id ASC
+            LIMIT 1
+        """),
+        {"now": now_iso, "amt": float(amount_2)},
+    )
+    row = cur.mappings().fetchone()
+    return dict(row) if row else None
+
+def _process_tx_if_matches(tx: dict) -> bool:
     txid = tx.get("transaction_id") or tx.get("transactionId") or tx.get("hash")
     if not txid:
         return False
 
-    # daha önce işlendi mi?
-    if conn.execute("SELECT 1 FROM processed_txs WHERE txid=?", (txid,)).fetchone():
-        return False
-
     amount = _as_decimal_amount(tx)
-    order = _match_order_by_amount(conn, amount)
-    if not order:
-        return False
+    amount_2 = float(round(float(amount) + 1e-9, 2))
+    now_iso = utcnow().isoformat()
 
-    # --- atomik işlem (çifte işlenmeyi engellemek için) ---
-    conn.execute("BEGIN IMMEDIATE")
+    # Tek atomik transaction
+    with engine.begin() as conn:
+        # 1) txid'yi processed_txs'e "claim" et (idempotency)
+        # txid zaten varsa rowcount=0 olur -> daha önce işlenmiş
+        ins = conn.execute(
+            text("""
+                INSERT INTO processed_txs (txid, processed_at)
+                VALUES (:txid, :ts)
+                ON CONFLICT (txid) DO NOTHING
+            """),
+            {"txid": txid, "ts": now_iso},
+        )
+        if ins.rowcount == 0:
+            return False
 
-    # tekrar kontrol (race condition için)
-    if conn.execute("SELECT 1 FROM processed_txs WHERE txid=?", (txid,)).fetchone():
-        conn.execute("ROLLBACK")
-        return False
+        # 2) Order'ı atomik olarak "paid" yap (awaiting + expire kontrol + amount match)
+        cur = conn.execute(
+            text("""
+                UPDATE purchase_orders
+                SET status = 'paid', paid_txid = :txid
+                WHERE id = (
+                    SELECT id
+                    FROM purchase_orders
+                    WHERE status = 'awaiting_payment'
+                      AND expires_at > :now
+                      AND expected_amount = :amt
+                    ORDER BY id ASC
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING id, user_id, dragon_code
+            """),
+            {"txid": txid, "now": now_iso, "amt": amount_2},
+        )
+        order = cur.mappings().fetchone()
+        if not order:
+            # eşleşen order yok -> az önce inserted processed_txs kaydını geri al
+            # (transaction içinde olduğumuz için raise ile rollback yapmak yerine delete edelim)
+            conn.execute(
+                text("DELETE FROM processed_txs WHERE txid = :txid"),
+                {"txid": txid},
+            )
+            return False
 
-    # order hala awaiting mi?
-    fresh = conn.execute(
-        "SELECT status FROM purchase_orders WHERE id=?",
-        (order["id"],),
-    ).fetchone()
-    if not fresh or fresh["status"] != "awaiting_payment":
-        conn.execute("ROLLBACK")
-        return False
+        # 3) Ejderhayı ver
+        _grant_dragon(conn, int(order["user_id"]), str(order["dragon_code"]))
 
-    # ejderhayı ver
-    _grant_dragon(conn, order["user_id"], order["dragon_code"])
-
-    # order paid + tx kaydı
-    conn.execute(
-        "UPDATE purchase_orders SET status='paid', paid_txid=? WHERE id=?",
-        (txid, order["id"]),
-    )
-    conn.execute(
-        "INSERT INTO processed_txs (txid, processed_at) VALUES (?, ?)",
-        (txid, utcnow().isoformat()),
-    )
-
-    conn.execute("COMMIT")
-    return True
+        return True
 
 def _grant_dragon(conn, user_id: int, dragon_code: str):
     dragon_code = dragon_code.strip().upper()
 
-    # eggs_per_day değerleri (500 AY = 1 USDT düzenine göre)
     EGGS_PER_DAY = {
         "MINIK": 2,
         "CIRAK": 170,
@@ -237,10 +246,15 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
     if dragon_code not in EGGS_PER_DAY:
         raise HTTPException(status_code=400, detail="Geçersiz ejderha")
 
-    # zaten aktif varsa tekrar verme (opsiyonel ama iyi)
+    # zaten aktif varsa tekrar verme
     cur = conn.execute(
-        "SELECT 1 FROM user_dragons WHERE user_id=? AND dragon_code=? AND is_active=1 LIMIT 1",
-        (user_id, dragon_code),
+        text("""
+            SELECT 1
+            FROM user_dragons
+            WHERE user_id = :uid AND dragon_code = :code AND is_active = 1
+            LIMIT 1
+        """),
+        {"uid": int(user_id), "code": dragon_code},
     )
     if cur.fetchone():
         return
@@ -249,16 +263,21 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
     expires = (now + timedelta(days=90)).isoformat()
     now_str = now.isoformat()
 
-    # main.py içindeki 233. satır civarı
     conn.execute(
-        """
-        INSERT INTO user_dragons
-        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
-        VALUES (?, ?, ?, ?, ?, 1, 1, 0)
-        """,
-        (user_id, dragon_code, EGGS_PER_DAY[dragon_code], now_str, expires),
-    )
-    
+        text("""
+            INSERT INTO user_dragons
+                (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
+            VALUES
+                (:uid, :code, :epd, :started, :expires, 1, 1, 0)
+        """),
+        {
+            "uid": int(user_id),
+            "code": dragon_code,
+            "epd": int(EGGS_PER_DAY[dragon_code]),
+            "started": now_str,
+            "expires": expires,
+        },
+    )    
 def production_multiplier(level: int) -> float:
     """
     Level 1 = bonus yok
@@ -561,10 +580,7 @@ def collect_eggs(telegram_id: str):
 
         user_id = int(user["id"])
 
-        # Süresi dolan dragonları pasifleştir
         _deactivate_expired_dragons(conn, user_id, now)
-
-        # Güncel aktif dragonları çek
         dragons = _get_active_dragons(conn, user_id)
 
         last_collect = parse_dt(user.get("last_collect_at"))
@@ -573,36 +589,34 @@ def collect_eggs(telegram_id: str):
         pending = compute_pending_eggs(dragons, last_collect, now)
         new_total = stored + pending
 
-        # Toplam XP
         total_xp = xp_gain_from_collect(pending)
 
-        # Dragon bazında pending hesapla
         per_dragon_pending: list[tuple[int, int]] = []
         for d in dragons:
             d_pending = _dragon_pending(d, last_collect, now)
             per_dragon_pending.append((int(d["id"]), int(d_pending)))
 
-        # XP'yi üretime göre dağıt (senin dict döndüren fonksiyonun)
         xp_map = distribute_xp(total_xp, per_dragon_pending)
 
-       # Dragon level/xp güncelle
-    for d in dragons:
-        did = int(d["id"])
-        gain = int(xp_map.get(did, 0))
+        # Dragon level/xp güncelle
+        for d in dragons:
+            did = int(d["id"])
+            gain = int(xp_map.get(did, 0))
 
-        current_level = int(d.get("level") or 1)
-        current_xp = int(d.get("xp") or 0)
-        new_xp = current_xp + gain
+            current_level = int(d.get("level") or 1)
+            current_xp = int(d.get("xp") or 0)
+            new_xp = current_xp + gain
 
-        while new_xp >= xp_needed_for_level(current_level):
-        new_xp -= xp_needed_for_level(current_level)
-        current_level += 1
+            while new_xp >= xp_needed_for_level(current_level):
+                new_xp -= xp_needed_for_level(current_level)
+                current_level += 1
 
-        conn.execute(
-        text("UPDATE user_dragons SET level = :lvl, xp = :xp WHERE id = :id"),
-        {"lvl": current_level, "xp": new_xp, "id": did},
-        )
-        # User eggs + last_collect_at güncelle
+            conn.execute(
+                text("UPDATE user_dragons SET level = :lvl, xp = :xp WHERE id = :id"),
+                {"lvl": current_level, "xp": new_xp, "id": did},
+            )
+
+        # Kullanıcı eggs + last_collect_at güncelle
         conn.execute(
             text("UPDATE users SET eggs_ay = :eggs, last_collect_at = :ts WHERE id = :id"),
             {"eggs": int(new_total), "ts": now.isoformat(), "id": user_id},
@@ -1272,32 +1286,19 @@ def admin_confirm_payment(
 def create_shop_order(req: CreateOrderRequest):
     dragon_code = req.dragon_code.strip().upper()
 
-    # Ejderha var mı?
-
-    VALID_DRAGONS = {
-    "MINIK",
-    "CIRAK",
-    "BRONZ",
-    "GUMUS",
-    "ALTIN",
-    "EFSANE",
-}
-
+    VALID_DRAGONS = {"MINIK", "CIRAK", "BRONZ", "GUMUS", "ALTIN", "EFSANE"}
     if dragon_code not in VALID_DRAGONS:
         raise HTTPException(status_code=400, detail="Geçersiz ejderha")
 
     DRAGON_PRICES = {
-    "MINIK": 0,
-    "CIRAK": 15,
-    "BRONZ": 30,
-    "GUMUS": 45,
-    "ALTIN": 65,
-    "EFSANE": 105,
-}
-
+        "MINIK": 0,
+        "CIRAK": 15,
+        "BRONZ": 30,
+        "GUMUS": 45,
+        "ALTIN": 65,
+        "EFSANE": 105,
+    }
     price_usdt = DRAGON_PRICES[dragon_code]
-
-    
     if price_usdt <= 0:
         raise HTTPException(status_code=400, detail="Bu ejderha satın alınamaz")
 
@@ -1305,39 +1306,46 @@ def create_shop_order(req: CreateOrderRequest):
     if not deposit_address:
         raise HTTPException(status_code=500, detail="TRON_DEPOSIT_ADDRESS ayarlı değil")
 
-    conn = get_conn()
-    try:
+    # Tek transaction
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, req.telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        # 🔑 B1: benzersiz tutar
+        # Benzersiz tutar
         unique_cents = randint(1, 99) / 100
         expected_amount = round(price_usdt + unique_cents, 2)
 
-        expires_at = (utcnow() + timedelta(minutes=30)).isoformat()
-        created_at = utcnow().isoformat()
+        now = utcnow()
+        expires_at = (now + timedelta(minutes=30)).isoformat()
+        created_at = now.isoformat()
 
         cur = conn.execute(
-            """
-            INSERT INTO purchase_orders
-            (user_id, dragon_code, expected_amount, status, expires_at, created_at)
-            VALUES (?, ?, ?, 'awaiting_payment', ?, ?)
-            """,
-            (user["id"], dragon_code, expected_amount, expires_at, created_at)
+            text("""
+                INSERT INTO purchase_orders
+                    (user_id, dragon_code, expected_amount, status, expires_at, created_at)
+                VALUES
+                    (:uid, :code, :amt, 'awaiting_payment', :exp, :created)
+                RETURNING id
+            """),
+            {
+                "uid": int(user["id"]),
+                "code": dragon_code,
+                "amt": float(expected_amount),
+                "exp": expires_at,
+                "created": created_at,
+            },
         )
-        conn.commit()
+        order_id = int(cur.mappings().fetchone()["id"])
 
-        return {
-            "order_id": cur.lastrowid,
-            "pay_to": deposit_address,
-            "expected_amount_usdt": expected_amount,
-            "network": "TRON (TRC-20)",
-            "expires_at": expires_at,
-            "note": "Lütfen tutarı aynen gönderin (benzersiz tutar eşleştirme için)."
-        }
-    finally:
-        conn.close()
+    return {
+        "order_id": order_id,
+        "pay_to": deposit_address,
+        "expected_amount_usdt": expected_amount,
+        "network": "TRON (TRC-20)",
+        "expires_at": expires_at,
+        "note": "Lütfen tutarı aynen gönderin (benzersiz tutar eşleştirme için).",
+    }
 
 # ===== WATCHER (TRC20 USDT) + ORDER TIMEOUT CLEANUP =====
 
