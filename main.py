@@ -561,10 +561,7 @@ def collect_eggs(telegram_id: str):
 
         user_id = int(user["id"])
 
-        # Süresi dolan dragonları pasifleştir
         _deactivate_expired_dragons(conn, user_id, now)
-
-        # Güncel aktif dragonları çek
         dragons = _get_active_dragons(conn, user_id)
 
         last_collect = parse_dt(user.get("last_collect_at"))
@@ -573,36 +570,34 @@ def collect_eggs(telegram_id: str):
         pending = compute_pending_eggs(dragons, last_collect, now)
         new_total = stored + pending
 
-        # Toplam XP
         total_xp = xp_gain_from_collect(pending)
 
-        # Dragon bazında pending hesapla
         per_dragon_pending: list[tuple[int, int]] = []
         for d in dragons:
             d_pending = _dragon_pending(d, last_collect, now)
             per_dragon_pending.append((int(d["id"]), int(d_pending)))
 
-        # XP'yi üretime göre dağıt (senin dict döndüren fonksiyonun)
         xp_map = distribute_xp(total_xp, per_dragon_pending)
 
-       # Dragon level/xp güncelle
-for d in dragons:
-    did = int(d["id"])
-    gain = int(xp_map.get(did, 0))
+        # Dragon level/xp güncelle
+        for d in dragons:
+            did = int(d["id"])
+            gain = int(xp_map.get(did, 0))
 
-    current_level = int(d.get("level") or 1)
-    current_xp = int(d.get("xp") or 0)
-    new_xp = current_xp + gain
+            current_level = int(d.get("level") or 1)
+            current_xp = int(d.get("xp") or 0)
+            new_xp = current_xp + gain
 
-    while new_xp >= xp_needed_for_level(current_level):
-        new_xp -= xp_needed_for_level(current_level)
-        current_level += 1
+            while new_xp >= xp_needed_for_level(current_level):
+                new_xp -= xp_needed_for_level(current_level)
+                current_level += 1
 
-    conn.execute(
-        text("UPDATE user_dragons SET level = :lvl, xp = :xp WHERE id = :id"),
-        {"lvl": current_level, "xp": new_xp, "id": did},
-    )
-        # User eggs + last_collect_at güncelle
+            conn.execute(
+                text("UPDATE user_dragons SET level = :lvl, xp = :xp WHERE id = :id"),
+                {"lvl": current_level, "xp": new_xp, "id": did},
+            )
+
+        # Kullanıcı eggs + last_collect_at güncelle
         conn.execute(
             text("UPDATE users SET eggs_ay = :eggs, last_collect_at = :ts WHERE id = :id"),
             {"eggs": int(new_total), "ts": now.isoformat(), "id": user_id},
