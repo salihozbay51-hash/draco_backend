@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from random import randint
 from db import init_db
+from sqlalchemy import text
+from db import engine  # db.py içinde engine var
 
 # .evn isimli bir dosya kullanıyorsan ismini buraya yazmalısın
 # Eğer dosya adını .env yaptıysan parantez içini boş bırakabilirsin: load_dotenv()
@@ -83,14 +85,17 @@ def require_admin(x_admin_token: str | None):
         raise HTTPException(status_code=403, detail="Geçersiz admin token")
 
 def _get_user_by_telegram(conn, telegram_id: str):
-    cur = conn.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-    row = cur.fetchone()
+    cur = conn.execute(
+        text("SELECT * FROM users WHERE telegram_id = :tg"),
+        {"tg": telegram_id},
+    )
+    row = cur.mappings().fetchone()
     return dict(row) if row else None
 
 def _grant_minik_if_missing(conn, user_id: int):
     cur = conn.execute(
-        "SELECT 1 FROM user_dragons WHERE user_id=? AND dragon_code=? LIMIT 1",
-        (user_id, MINIK.code),
+        text("SELECT 1 FROM user_dragons WHERE user_id = :uid AND dragon_code = :code LIMIT 1"),
+        {"uid": user_id, "code": MINIK.code},
     )
     if cur.fetchone():
         return
@@ -100,14 +105,21 @@ def _grant_minik_if_missing(conn, user_id: int):
     now_str = now.isoformat()
 
     conn.execute(
-        """
-        INSERT INTO user_dragons
-        (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
-        VALUES (?, ?, ?, ?, ?, 1, 1, 0)
-        """,
-        (user_id, MINIK.code, MINIK.eggs_per_day, now_str, expires),
+        text("""
+            INSERT INTO user_dragons
+              (user_id, dragon_code, eggs_per_day, started_at, expires_at, is_active, level, xp)
+            VALUES
+              (:uid, :code, :epd, :started, :expires, 1, 1, 0)
+        """),
+        {
+            "uid": user_id,
+            "code": MINIK.code,
+            "epd": MINIK.eggs_per_day,
+            "started": now_str,
+            "expires": expires,
+        },
     )
-
+    
 def _fetch_incoming_usdt_trc20(deposit_address: str, limit: int = 50) -> list[dict]:
     base = os.getenv("TRONGRID_BASE", "https://api.trongrid.io").strip().rstrip("/")
     url = f"{base}/v1/accounts/{deposit_address}/transactions/trc20"
@@ -274,35 +286,6 @@ def xp_needed_for_level(level: int) -> int:
     level = int(level or 1)
     return 100 * level
 
-def distribute_xp(total_xp: int, per_dragon_pending: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    """
-    per_dragon_pending: [(dragon_id, pending_eggs), ...]
-    return: [(dragon_id, xp_share), ...]
-    """
-    total_pending = sum(p for _, p in per_dragon_pending)
-    if total_xp <= 0 or total_pending <= 0:
-        return [(dragon_id, 0) for dragon_id, _ in per_dragon_pending]
-
-    # Oransal dağıtım (floor)
-    shares = []
-    used = 0
-    for dragon_id, p in per_dragon_pending:
-        s = int(total_xp * (p / total_pending))
-        shares.append([dragon_id, s])
-        used += s
-
-    # Kalan XP'yi (rounding farkı) en çok üretenlere dağıt
-    remaining = total_xp - used
-    if remaining > 0:
-        shares.sort(key=lambda x: next(p for did, p in per_dragon_pending if did == x[0]), reverse=True)
-        i = 0
-        while remaining > 0 and shares:
-            shares[i % len(shares)][1] += 1
-            remaining -= 1
-            i += 1
-
-    return [(did, s) for did, s in shares]
-
 def _dragon_pending(d: dict, last_collect_at, now) -> int:
     code = d["dragon_code"]
     dragon_type = DRAGONS.get(code)
@@ -401,22 +384,18 @@ def debug_rewind_collect(telegram_id: str, hours: int = 24):
         conn.close()
 
 def _deactivate_expired_dragons(conn, user_id: int, now: datetime) -> int:
-    """
-    expires_at geçmiş olan ejderhaları pasifleştir (is_active=0).
-    Return: kaç kayıt pasifleştirildi
-    """
-    cur = conn.execute("""
+    cur = conn.execute(text("""
         UPDATE user_dragons
         SET is_active = 0
-        WHERE user_id = ?
+        WHERE user_id = :uid
           AND is_active = 1
           AND expires_at IS NOT NULL
-          AND expires_at <= ?
-    """, (user_id, now.isoformat()))
+          AND expires_at <= :now
+    """), {"uid": user_id, "now": now.isoformat()})
     return cur.rowcount
 
 def _get_active_dragons(conn, user_id: int):
-    cur = conn.execute("""
+    cur = conn.execute(text("""
         SELECT
             id,
             dragon_code,
@@ -426,10 +405,10 @@ def _get_active_dragons(conn, user_id: int):
             level,
             xp
         FROM user_dragons
-        WHERE user_id = ? AND is_active = 1
+        WHERE user_id = :uid AND is_active = 1
         ORDER BY id ASC
-    """, (user_id,))
-    return [dict(r) for r in cur.fetchall()]
+    """), {"uid": user_id})
+    return [dict(r) for r in cur.mappings().all()]
 
 # --------- Schemas ---------
 class RegisterRequest(BaseModel):
@@ -513,53 +492,50 @@ def compute_pending_eggs(dragons: list[dict], last_collect_at: datetime | None, 
 def root():
     return {"status": "Draco backend çalışıyor 🐉"}
 
-@app.get("/health")
-def health():
-    return {"ok": True}
-
 @app.post("/users/register", response_model=RegisterResponse)
 def register_user(payload: RegisterRequest):
     telegram_id = payload.telegram_id.strip()
     if not telegram_id:
         raise HTTPException(status_code=400, detail="telegram_id boş olamaz")
 
-    conn = get_conn()
-    try:
+    # Tek transaction: user oluştur + minik ver
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
 
         if user is None:
-            conn.execute("INSERT INTO users (telegram_id) VALUES (?)", (telegram_id,))
-            conn.commit()
-            user = _get_user_by_telegram(conn, telegram_id)
+            cur = conn.execute(
+                text("""
+                    INSERT INTO users (telegram_id, eggs_ay, usdt_balance, last_collect_at)
+                    VALUES (:tg, 0, 0, NULL)
+                    RETURNING id, telegram_id
+                """),
+                {"tg": telegram_id},
+            )
+            user = dict(cur.mappings().fetchone())
 
-        _grant_minik_if_missing(conn, user["id"])
-        conn.commit()
+        _grant_minik_if_missing(conn, int(user["id"]))
 
-        dragons = _get_active_dragons(conn, user["id"])
+        dragons = _get_active_dragons(conn, int(user["id"]))
 
         return RegisterResponse(
-            user_id=user["id"],
+            user_id=int(user["id"]),
             telegram_id=user["telegram_id"],
-            dragons=dragons
+            dragons=dragons,
         )
-    finally:
-        conn.close()
 
 @app.get("/users/{telegram_id}/eggs", response_model=EggsStatusResponse)
 def eggs_status(telegram_id: str):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı. Önce /users/register çağır.")
 
         now = utcnow()
-        _deactivate_expired_dragons(conn, user["id"], now)
-        conn.commit()
+        _deactivate_expired_dragons(conn, int(user["id"]), now)
 
-        dragons = _get_active_dragons(conn, user["id"])
-
+        dragons = _get_active_dragons(conn, int(user["id"]))
         last_collect = parse_dt(user["last_collect_at"])
         stored = int(user["eggs_ay"] or 0)
         pending = compute_pending_eggs(dragons, last_collect, now)
@@ -572,29 +548,27 @@ def eggs_status(telegram_id: str):
             last_collect_at=user["last_collect_at"],
             active_dragons=dragons
         )
-    finally:
-        conn.close()
-
+    
 @app.post("/users/{telegram_id}/collect", response_model=CollectResponse)
 def collect_eggs(telegram_id: str):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+    now = utcnow()
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı. Önce /users/register çağır.")
 
-        now = utcnow()
+        user_id = int(user["id"])
 
         # Süresi dolan dragonları pasifleştir
-        _deactivate_expired_dragons(conn, user["id"], now)
-        conn.commit()
+        _deactivate_expired_dragons(conn, user_id, now)
 
         # Güncel aktif dragonları çek
-        dragons = _get_active_dragons(conn, user["id"])
+        dragons = _get_active_dragons(conn, user_id)
 
-        last_collect = parse_dt(user["last_collect_at"])
-        stored = int(user["eggs_ay"] or 0)
+        last_collect = parse_dt(user.get("last_collect_at"))
+        stored = int(user.get("eggs_ay") or 0)
 
         pending = compute_pending_eggs(dragons, last_collect, now)
         new_total = stored + pending
@@ -603,47 +577,44 @@ def collect_eggs(telegram_id: str):
         total_xp = xp_gain_from_collect(pending)
 
         # Dragon bazında pending hesapla
-        per_dragon_pending = []
+        per_dragon_pending: list[tuple[int, int]] = []
         for d in dragons:
             d_pending = _dragon_pending(d, last_collect, now)
             per_dragon_pending.append((int(d["id"]), int(d_pending)))
 
-        # XP'yi üretime göre dağıt
-        xp_shares = dict(distribute_xp(total_xp, per_dragon_pending))
+        # XP'yi üretime göre dağıt (senin dict döndüren fonksiyonun)
+        xp_map = distribute_xp(total_xp, per_dragon_pending)
 
-        for d in dragons:
-            gain = int(xp_shares.get(int(d["id"]), 0))
+       # Dragon level/xp güncelle
+for d in dragons:
+    did = int(d["id"])
+    gain = int(xp_map.get(did, 0))
 
-            current_level = int(d.get("level") or 1)
-            current_xp = int(d.get("xp") or 0)
+    current_level = int(d.get("level") or 1)
+    current_xp = int(d.get("xp") or 0)
+    new_xp = current_xp + gain
 
-            new_xp = current_xp + gain
+    while new_xp >= xp_needed_for_level(current_level):
+        new_xp -= xp_needed_for_level(current_level)
+        current_level += 1
 
-            while new_xp >= xp_needed_for_level(current_level):
-                new_xp -= xp_needed_for_level(current_level)
-                current_level += 1
-
-            conn.execute(
-                "UPDATE user_dragons SET level = ?, xp = ? WHERE id = ?",
-                (current_level, new_xp, d["id"])
-            )
-        # Kullanıcı eggs + last_collect güncelle
+    conn.execute(
+        text("UPDATE user_dragons SET level = :lvl, xp = :xp WHERE id = :id"),
+        {"lvl": current_level, "xp": new_xp, "id": did},
+    )
+        # User eggs + last_collect_at güncelle
         conn.execute(
-            "UPDATE users SET eggs_ay = ?, last_collect_at = ? WHERE id = ?",
-            (new_total, now.isoformat(), user["id"])
+            text("UPDATE users SET eggs_ay = :eggs, last_collect_at = :ts WHERE id = :id"),
+            {"eggs": int(new_total), "ts": now.isoformat(), "id": user_id},
         )
-
-        conn.commit()
 
         return CollectResponse(
             telegram_id=user["telegram_id"],
-            added_eggs_ay=pending,
-            new_total_eggs_ay=new_total,
-            collected_at=now.isoformat()
+            added_eggs_ay=int(pending),
+            new_total_eggs_ay=int(new_total),
+            collected_at=now.isoformat(),
         )
-    finally:
-        conn.close()
-        
+    
 class DragonItem(BaseModel):
     id: int
     dragon_code: str
