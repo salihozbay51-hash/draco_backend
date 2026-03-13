@@ -357,29 +357,30 @@ def distribute_xp(total_xp: int, per_dragon_pending: list[tuple[int, int]]) -> d
 @app.post("/debug/users/{telegram_id}/add-usdt")
 def debug_add_usdt(telegram_id: str, amount_usdt: float = 10):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         cur = conn.execute(
-            "UPDATE users SET usdt_balance = usdt_balance + ? WHERE telegram_id = ?",
-            (float(amount_usdt), telegram_id),
+            text("""
+                UPDATE users
+                SET usdt_balance = usdt_balance + :amount
+                WHERE telegram_id = :tg
+            """),
+            {"amount": float(amount_usdt), "tg": telegram_id},
         )
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        conn.commit()
         return {"ok": True, "telegram_id": telegram_id, "added_usdt": amount_usdt}
-    finally:
-        conn.close()
+
 
 @app.post("/debug/users/{telegram_id}/rewind_collect")
 def debug_rewind_collect(telegram_id: str, hours: int = 24):
-    # Güvenlik: prod'da kapalı kalsın
     if not DEBUG:
         raise HTTPException(status_code=404, detail="Not found")
 
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if not user:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -388,10 +389,13 @@ def debug_rewind_collect(telegram_id: str, hours: int = 24):
         new_last = (now - timedelta(hours=int(hours))).isoformat()
 
         conn.execute(
-            "UPDATE users SET last_collect_at = ? WHERE id = ?",
-            (new_last, int(user["id"])),
+            text("""
+                UPDATE users
+                SET last_collect_at = :last_collect
+                WHERE id = :uid
+            """),
+            {"last_collect": new_last, "uid": int(user["id"])},
         )
-        conn.commit()
 
         return {
             "ok": True,
@@ -399,8 +403,6 @@ def debug_rewind_collect(telegram_id: str, hours: int = 24):
             "hours_rewound": int(hours),
             "last_collect_at": new_last,
         }
-    finally:
-        conn.close()
 
 def _deactivate_expired_dragons(conn, user_id: int, now: datetime) -> int:
     cur = conn.execute(text("""
@@ -641,47 +643,58 @@ class DragonsListResponse(BaseModel):
     dragons: list[DragonItem]
 
 def _get_all_dragons(conn, user_id: int):
-    cur = conn.execute("""
-        SELECT
-            id,
-            dragon_code,
-            started_at,
-            expires_at,
-            is_active,
-            level,
-            xp
-        FROM user_dragons
-        WHERE user_id = ?
-        ORDER BY id ASC
-    """, (user_id,))
-    return [dict(r) for r in cur.fetchall()]
+    cur = conn.execute(
+        text("""
+            SELECT
+                id,
+                dragon_code,
+                started_at,
+                expires_at,
+                is_active,
+                level,
+                xp
+            FROM user_dragons
+            WHERE user_id = :uid
+            ORDER BY id ASC
+        """),
+        {"uid": int(user_id)},
+    )
+    return [dict(r) for r in cur.mappings().all()]
 
 @app.get("/users/{telegram_id}/dragons", response_model=DragonsListResponse)
 def list_user_dragons(telegram_id: str):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        dragons = _get_all_dragons(conn, user["id"])
+        dragons = _get_all_dragons(conn, int(user["id"]))
         return {
             "telegram_id": user["telegram_id"],
             "dragons": dragons
         }
-    finally:
-        conn.close()
+
 
 @app.get("/shop/orders/{order_id}")
 def get_order(order_id: int):
-    conn = get_conn()
-    try:
-        row = conn.execute(
-            "SELECT id, dragon_code, expected_amount, status, expires_at, paid_txid "
-            "FROM purchase_orders WHERE id = ?",
-            (order_id,),
-        ).fetchone()
+    with engine.begin() as conn:
+        cur = conn.execute(
+            text("""
+                SELECT
+                    id,
+                    dragon_code,
+                    expected_amount,
+                    status,
+                    expires_at,
+                    paid_txid
+                FROM purchase_orders
+                WHERE id = :oid
+            """),
+            {"oid": int(order_id)},
+        )
+        row = cur.mappings().fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="Order bulunamadı")
@@ -690,12 +703,10 @@ def get_order(order_id: int):
             "id": row["id"],
             "dragon_code": row["dragon_code"],
             "expected_amount_usdt": row["expected_amount"],
-            "status": row["status"],   # awaiting / paid / expired
+            "status": row["status"],
             "expires_at": row["expires_at"],
             "paid_txid": row["paid_txid"],
         }
-    finally:
-        conn.close()
 
 
    # --------- AY -> USDT CONVERT ---------
@@ -711,8 +722,8 @@ EGG_TO_USDT_RATE = 500
 @app.post("/users/{telegram_id}/convert", response_model=ConvertResponse)
 def convert_eggs_to_usdt(telegram_id: str):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -728,10 +739,13 @@ def convert_eggs_to_usdt(telegram_id: str):
         new_balance = usdt_balance + float(converted)
 
         conn.execute(
-            "UPDATE users SET eggs_ay = ?, usdt_balance = ? WHERE id = ?",
-            (remaining, new_balance, user["id"])
+            text("""
+                UPDATE users
+                SET eggs_ay = :eggs, usdt_balance = :bal
+                WHERE id = :uid
+            """),
+            {"eggs": int(remaining), "bal": float(new_balance), "uid": int(user["id"])},
         )
-        conn.commit()
 
         return ConvertResponse(
             telegram_id=user["telegram_id"],
@@ -739,9 +753,6 @@ def convert_eggs_to_usdt(telegram_id: str):
             remaining_eggs_ay=remaining,
             new_usdt_balance=new_balance
         )
-    finally:
-        conn.close()
-
 
 # --------- DEBUG (TEST) ENDPOINT: YUMURTA EKLE ---------
 
@@ -751,8 +762,8 @@ class AddEggsRequest(BaseModel):
 @app.post("/debug/users/{telegram_id}/add-eggs")
 def debug_add_eggs(telegram_id: str, payload: AddEggsRequest):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -761,14 +772,16 @@ def debug_add_eggs(telegram_id: str, payload: AddEggsRequest):
         new_total = current + int(payload.amount)
 
         conn.execute(
-            "UPDATE users SET eggs_ay = ? WHERE id = ?",
-            (new_total, user["id"])
+            text("""
+                UPDATE users
+                SET eggs_ay = :eggs
+                WHERE id = :uid
+            """),
+            {"eggs": int(new_total), "uid": int(user["id"])},
         )
-        conn.commit()
 
         return {"telegram_id": user["telegram_id"], "new_eggs_ay": new_total}
-    finally:
-        conn.close()
+
  
 # --------- MARKET: EJDERHA SATIN AL ---------
 
@@ -786,53 +799,52 @@ def buy_dragon(telegram_id: str, dragon_code: str):
     telegram_id = telegram_id.strip()
     dragon_code = dragon_code.strip()
 
-    conn = get_conn()
-    try:
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
         now = utcnow()
-        _deactivate_expired_dragons(conn, user["id"], now) #
+        _deactivate_expired_dragons(conn, int(user["id"]), now)
 
-        # 1. Ejderhayı güvenli şekilde getir
         dragon = DRAGONS.get(dragon_code.lower())
         if dragon is None:
             raise HTTPException(status_code=404, detail="Ejderha bulunamadı")
 
-        # 2. Fiyat ve Bakiye Kontrolü (Hatalı price_value kaldırıldı)
-        price = float(dragon.price_usdt) # Doğrudan modelden alıyoruz
+        price = float(dragon.price_usdt)
         usdt_balance = float(user.get("usdt_balance") or 0)
 
         if usdt_balance < price:
             raise HTTPException(status_code=400, detail=f"Yetersiz bakiye. Gerekli: {price} USDT")
 
-        # 3. Tarih Hesaplamaları
         started = utcnow()
         expires = started + timedelta(days=dragon.lifetime_days)
         new_balance = usdt_balance - price
 
-        # 4. Veritabanına Kayıt (Tüm sütunlar eksiksiz)
-        # main.py içindeki 703. satır civarı
         conn.execute(
-    text("""
-        INSERT INTO user_dragons
-        (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active, level, xp)
-        VALUES (:uid, :code, :epd, :price, :started, :expires, 1, 1, 0)
-    """),
-    {
-        "uid": user["id"],
-        "code": dragon.code,
-        "epd": dragon.eggs_per_day,
-        "price": price,
-        "started": started.isoformat(),
-        "expires": expires.isoformat()
-    }
-)
+            text("""
+                INSERT INTO user_dragons
+                (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active, level, xp)
+                VALUES (:uid, :code, :epd, :price, :started, :expires, 1, 1, 0)
+            """),
+            {
+                "uid": int(user["id"]),
+                "code": dragon.code,
+                "epd": int(dragon.eggs_per_day),
+                "price": float(price),
+                "started": started.isoformat(),
+                "expires": expires.isoformat(),
+            }
+        )
+
         conn.execute(
-            text("UPDATE users SET usdt_balance = :bal WHERE id = :id"),
-            {"bal": new_balance, "id": user["id"]}
-)
+            text("""
+                UPDATE users
+                SET usdt_balance = :bal
+                WHERE id = :uid
+            """),
+            {"bal": float(new_balance), "uid": int(user["id"])},
+        )
 
         return BuyDragonResponse(
             telegram_id=user["telegram_id"],
@@ -842,8 +854,7 @@ def buy_dragon(telegram_id: str, dragon_code: str):
             started_at=started.isoformat(),
             expires_at=expires.isoformat()
         )
-    finally:
-        conn.close()
+
 # --------- PROFILE (Mini App için tek endpoint) ---------
 
 class ProfileDragonItem(BaseModel):
@@ -1039,22 +1050,19 @@ def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
     fee = WITHDRAW_FEE_USDT
     total_debit = amount_net + fee
 
-    conn = get_conn()
-    in_tx = False
-    try:
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        # Aynı anda sadece 1 pending withdraw olsun
         cur = conn.execute(
-            """
-            SELECT 1
-            FROM withdraw_requests
-            WHERE user_id = ? AND status = 'pending'
-            LIMIT 1
-            """,
-            (user["id"],),
+            text("""
+                SELECT 1
+                FROM withdraw_requests
+                WHERE user_id = :uid AND status = 'pending'
+                LIMIT 1
+            """),
+            {"uid": int(user["id"])},
         )
         if cur.fetchone() is not None:
             raise HTTPException(status_code=400, detail="Zaten beklemede olan bir çekim talebin var")
@@ -1067,66 +1075,48 @@ def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
             )
 
         now = utcnow().isoformat()
-
-        conn.execute("BEGIN")
-        in_tx = True
-
         new_balance = balance - total_debit
+
         conn.execute(
-            "UPDATE users SET usdt_balance = ? WHERE id = ?",
-            (new_balance, user["id"]),
+            text("""
+                UPDATE users
+                SET usdt_balance = :bal
+                WHERE id = :uid
+            """),
+            {"bal": float(new_balance), "uid": int(user["id"])},
         )
 
         cur = conn.execute(
-            """
-            INSERT INTO withdraw_requests
-              (user_id, telegram_id,
-               amount_net_usdt, fee_usdt, amount_gross_usdt,
-               address, status, note, created_at, updated_at)
-            VALUES
-              (?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?)
-            """,
-            (
-                user["id"],
-                user["telegram_id"],
-                amount_net,
-                fee,
-                total_debit,
-                address,
-                now,
-                now,
-            ),
+            text("""
+                INSERT INTO withdraw_requests
+                  (user_id, telegram_id,
+                   amount_net_usdt, fee_usdt, amount_gross_usdt,
+                   address, status, note, created_at, updated_at)
+                VALUES
+                  (:uid, :tg, :net, :fee, :gross, :addr, 'pending', NULL, :created, :updated)
+                RETURNING id
+            """),
+            {
+                "uid": int(user["id"]),
+                "tg": user["telegram_id"],
+                "net": float(amount_net),
+                "fee": float(fee),
+                "gross": float(total_debit),
+                "addr": address,
+                "created": now,
+                "updated": now,
+            },
         )
 
-        withdraw_id = cur.lastrowid
-        conn.commit()
-        in_tx = False
+        withdraw_id = int(cur.mappings().fetchone()["id"])
 
         return WithdrawRequestResponse(
             telegram_id=user["telegram_id"],
-            withdraw_id=int(withdraw_id),
-            amount_usdt=amount_net,  # NET
+            withdraw_id=withdraw_id,
+            amount_usdt=amount_net,
             status="pending",
             remaining_usdt_balance=new_balance,
         )
-
-    except HTTPException:
-        # kontrollü hata: transaction başladıysa rollback
-        if in_tx:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-        raise
-    except Exception:
-        if in_tx:
-            try:
-                conn.execute("ROLLBACK")
-            except Exception:
-                pass
-        raise
-    finally:
-        conn.close()
 
 
 class AdminActionBody(BaseModel):
@@ -1136,56 +1126,58 @@ class AdminActionBody(BaseModel):
 def admin_list_withdraws(status: str = "pending", x_admin_token: str | None = Header(default=None)):
     require_admin(x_admin_token)
 
-    conn = get_conn()
-    try:
+    with engine.begin() as conn:
         cur = conn.execute(
-            """
-            SELECT id, telegram_id, amount_net_usdt, fee_usdt, amount_gross_usdt, address, status, created_at, updated_at, note
-            FROM withdraw_requests
-            WHERE status = ?
-            ORDER BY id ASC
-            """,
-            (status,),
+            text("""
+                SELECT
+                    id, telegram_id, amount_net_usdt, fee_usdt, amount_gross_usdt,
+                    address, status, created_at, updated_at, note
+                FROM withdraw_requests
+                WHERE status = :status
+                ORDER BY id ASC
+            """),
+            {"status": status},
         )
-        return {"items": [dict(r) for r in cur.fetchall()]}
-    finally:
-        conn.close()
+        return {"items": [dict(r) for r in cur.mappings().all()]}
+
 
 @app.post("/admin/withdraw/{withdraw_id}/approve")
 def admin_approve_withdraw(withdraw_id: int, body: AdminActionBody, x_admin_token: str | None = Header(default=None)):
     require_admin(x_admin_token)
 
-    conn = get_conn()
-    try: 
+    with engine.begin() as conn:
         now = utcnow().isoformat()
         cur = conn.execute(
-            "UPDATE withdraw_requests SET status='approved', note=?, updated_at=? WHERE id=? AND status='pending'",
-            (body.note, now, withdraw_id),
+            text("""
+                UPDATE withdraw_requests
+                SET status = 'approved', note = :note, updated_at = :updated
+                WHERE id = :wid AND status = 'pending'
+            """),
+            {"note": body.note, "updated": now, "wid": int(withdraw_id)},
         )
-        conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=400, detail="Talep yok veya pending değil")
+
         return {"ok": True, "status": "approved"}
-    finally:
-        conn.close()
 
 @app.post("/admin/withdraw/{withdraw_id}/paid")
 def admin_mark_paid(withdraw_id: int, body: AdminActionBody, x_admin_token: str | None = Header(default=None)):
     require_admin(x_admin_token)
 
-    conn = get_conn()
-    try:
+    with engine.begin() as conn:
         now = utcnow().isoformat()
         cur = conn.execute(
-            "UPDATE withdraw_requests SET status='paid', note=?, updated_at=? WHERE id=? AND status='approved'",
-            (body.note, now, withdraw_id),
+            text("""
+                UPDATE withdraw_requests
+                SET status = 'paid', note = :note, updated_at = :updated
+                WHERE id = :wid AND status = 'approved'
+            """),
+            {"note": body.note, "updated": now, "wid": int(withdraw_id)},
         )
-        conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=400, detail="Talep yok veya approved değil")
+
         return {"ok": True, "status": "paid"}
-    finally:
-        conn.close()
 
 @app.post("/admin/withdraw/{withdraw_id}/reject")
 def admin_reject_withdraw(
@@ -1195,41 +1187,44 @@ def admin_reject_withdraw(
 ):
     require_admin(x_admin_token)
 
-    conn = get_conn()
-    try:
+    with engine.begin() as conn:
         now = utcnow().isoformat()
-        conn.execute("BEGIN")
 
         cur = conn.execute(
-            "SELECT id, user_id, amount_gross_usdt, status FROM withdraw_requests WHERE id=?",
-            (withdraw_id,),
+            text("""
+                SELECT id, user_id, amount_gross_usdt, status
+                FROM withdraw_requests
+                WHERE id = :wid
+            """),
+            {"wid": int(withdraw_id)},
         )
-        w = cur.fetchone()
+        w = cur.mappings().fetchone()
 
         if not w:
-            conn.execute("ROLLBACK")
             raise HTTPException(status_code=404, detail="Talep bulunamadı")
 
         if w["status"] != "pending":
-            conn.execute("ROLLBACK")
             raise HTTPException(status_code=400, detail="Sadece pending reddedilebilir")
 
         conn.execute(
-            "UPDATE withdraw_requests SET status='rejected', note=?, updated_at=? WHERE id=?",
-            (body.note, now, withdraw_id),
+            text("""
+                UPDATE withdraw_requests
+                SET status = 'rejected', note = :note, updated_at = :updated
+                WHERE id = :wid
+            """),
+            {"note": body.note, "updated": now, "wid": int(withdraw_id)},
         )
 
         conn.execute(
-            "UPDATE users SET usdt_balance = usdt_balance + ? WHERE id=?",
-            (float(w["amount_gross_usdt"]), int(w["user_id"])),
+            text("""
+                UPDATE users
+                SET usdt_balance = usdt_balance + :amount
+                WHERE id = :uid
+            """),
+            {"amount": float(w["amount_gross_usdt"]), "uid": int(w["user_id"])},
         )
 
-        conn.commit()
         return {"ok": True, "status": "rejected"}
-
-    finally:
-        conn.close()
-
 
 
 from fastapi import Body
@@ -1242,41 +1237,46 @@ def admin_confirm_payment(
 ):
     require_admin(x_admin_token)
 
-    conn = get_conn()
-    try:
-        # tx daha önce işlendi mi?
-        if conn.execute(
-            "SELECT 1 FROM processed_txs WHERE txid = ?", (txid,)
-        ).fetchone():
+    with engine.begin() as conn:
+        cur = conn.execute(
+            text("SELECT 1 FROM processed_txs WHERE txid = :txid"),
+            {"txid": txid},
+        )
+        if cur.fetchone():
             raise HTTPException(status_code=400, detail="Bu tx daha önce işlendi")
 
-        order = conn.execute(
-            """
-            SELECT po.*, u.telegram_id
-            FROM purchase_orders po
-            JOIN users u ON u.id = po.user_id
-            WHERE po.id = ? AND po.status = 'awaiting_payment'
-            """,
-            (order_id,),
-        ).fetchone()
+        cur = conn.execute(
+            text("""
+                SELECT po.*, u.telegram_id
+                FROM purchase_orders po
+                JOIN users u ON u.id = po.user_id
+                WHERE po.id = :oid AND po.status = 'awaiting_payment'
+            """),
+            {"oid": int(order_id)},
+        )
+        order = cur.mappings().fetchone()
 
         if not order:
             raise HTTPException(status_code=404, detail="Sipariş bulunamadı veya aktif değil")
 
-        # ejderhayı ver
-        _grant_dragon(conn, order["user_id"], order["dragon_code"])
+        _grant_dragon(conn, int(order["user_id"]), str(order["dragon_code"]))
 
-        # order + tx işaretle
         conn.execute(
-            "UPDATE purchase_orders SET status='paid', paid_txid=? WHERE id=?",
-            (txid, order_id),
-        )
-        conn.execute(
-            "INSERT INTO processed_txs (txid, processed_at) VALUES (?, ?)",
-            (txid, utcnow().isoformat()),
+            text("""
+                UPDATE purchase_orders
+                SET status = 'paid', paid_txid = :txid
+                WHERE id = :oid
+            """),
+            {"txid": txid, "oid": int(order_id)},
         )
 
-        conn.commit()
+        conn.execute(
+            text("""
+                INSERT INTO processed_txs (txid, processed_at)
+                VALUES (:txid, :processed_at)
+            """),
+            {"txid": txid, "processed_at": utcnow().isoformat()},
+        )
 
         return {
             "status": "ok",
@@ -1284,8 +1284,6 @@ def admin_confirm_payment(
             "telegram_id": order["telegram_id"],
             "dragon": order["dragon_code"],
         }
-    finally:
-        conn.close()
 
 @app.post("/shop/orders")
 def create_shop_order(req: CreateOrderRequest):
@@ -1357,17 +1355,16 @@ def create_shop_order(req: CreateOrderRequest):
 _stop_watcher = threading.Event()
 
 def _expire_old_orders(conn) -> int:
-    """
-    Süresi geçen awaiting_payment siparişleri expired yapar.
-    Return: kaç sipariş expired oldu
-    """
     now_iso = utcnow().isoformat()
-    cur = conn.execute("""
-        UPDATE purchase_orders
-        SET status='expired'
-        WHERE status='awaiting_payment'
-          AND expires_at <= ?
-    """, (now_iso,))
+    cur = conn.execute(
+        text("""
+            UPDATE purchase_orders
+            SET status = 'expired'
+            WHERE status = 'awaiting_payment'
+              AND expires_at <= :now
+        """),
+        {"now": now_iso},
+    )
     return cur.rowcount
 
 def _watcher_loop():
@@ -1429,25 +1426,27 @@ def _watcher_loop():
 @app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade", response_model=UpgradeResponse)
 def upgrade_dragon(telegram_id: str, dragon_id: int):
     telegram_id = telegram_id.strip()
-    conn = get_conn()
-    try:
+
+    with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        # Dragon var mı ve kullanıcıya mı ait
-        d = conn.execute("""
-            SELECT id, level
-            FROM user_dragons
-            WHERE id = ? AND user_id = ? AND is_active = 1
-        """, (dragon_id, user["id"])).fetchone()
+        cur = conn.execute(
+            text("""
+                SELECT id, level
+                FROM user_dragons
+                WHERE id = :did AND user_id = :uid AND is_active = 1
+            """),
+            {"did": int(dragon_id), "uid": int(user["id"])},
+        )
+        d = cur.mappings().fetchone()
 
         if not d:
             raise HTTPException(status_code=404, detail="Ejderha bulunamadı")
 
         old_level = int(d["level"] or 1)
         cost = upgrade_cost_eggs(old_level)
-
         stored_eggs = int(user["eggs_ay"] or 0)
 
         if stored_eggs < cost:
@@ -1460,16 +1459,22 @@ def upgrade_dragon(telegram_id: str, dragon_id: int):
         new_eggs = stored_eggs - cost
 
         conn.execute(
-            "UPDATE users SET eggs_ay = ? WHERE id = ?",
-            (new_eggs, user["id"])
+            text("""
+                UPDATE users
+                SET eggs_ay = :eggs
+                WHERE id = :uid
+            """),
+            {"eggs": int(new_eggs), "uid": int(user["id"])},
         )
 
         conn.execute(
-            "UPDATE user_dragons SET level = ? WHERE id = ?",
-            (new_level, dragon_id)
+            text("""
+                UPDATE user_dragons
+                SET level = :lvl
+                WHERE id = :did
+            """),
+            {"lvl": int(new_level), "did": int(dragon_id)},
         )
-
-        conn.commit()
 
         return UpgradeResponse(
             telegram_id=user["telegram_id"],
@@ -1479,6 +1484,3 @@ def upgrade_dragon(telegram_id: str, dragon_id: int):
             cost_eggs=cost,
             remaining_eggs_ay=new_eggs
         )
-
-    finally:
-        conn.close()
