@@ -814,20 +814,25 @@ def buy_dragon(telegram_id: str, dragon_code: str):
 
         # 4. Veritabanına Kayıt (Tüm sütunlar eksiksiz)
         # main.py içindeki 703. satır civarı
-        conn.execute("""
-            INSERT INTO user_dragons
-            (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active, level, xp)
-            VALUES (?, ?, ?, ?, ?, ?, 1, 1, 0)
-        """, (
-            user["id"],
-            dragon.code,
-            dragon.eggs_per_day,
-            price,
-            started.isoformat(),
-            expires.isoformat()
-        ))
-        conn.execute("UPDATE users SET usdt_balance = ? WHERE id = ?", (new_balance, user["id"]))
-        conn.commit()
+        conn.execute(
+    text("""
+        INSERT INTO user_dragons
+        (user_id, dragon_code, eggs_per_day, purchased_usdt, started_at, expires_at, is_active, level, xp)
+        VALUES (:uid, :code, :epd, :price, :started, :expires, 1, 1, 0)
+    """),
+    {
+        "uid": user["id"],
+        "code": dragon.code,
+        "epd": dragon.eggs_per_day,
+        "price": price,
+        "started": started.isoformat(),
+        "expires": expires.isoformat()
+    }
+)
+        conn.execute(
+            text("UPDATE users SET usdt_balance = :bal WHERE id = :id"),
+            {"bal": new_balance, "id": user["id"]}
+)
 
         return BuyDragonResponse(
             telegram_id=user["telegram_id"],
