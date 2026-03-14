@@ -3,6 +3,7 @@ import requests
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 API_BASE = (
     os.getenv("BACKEND_URL")
@@ -25,16 +26,29 @@ def get_order(order_id: int) -> dict:
     return r.json()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = (
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text="🎮 Play Game",
+                web_app=WebAppInfo(url="https://dracobackend-production.up.railway.app")
+            )
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = (
         "🐉 *Draco Kingdom*\n\n"
-        "Komutlar:\n"
-        "• /buy <dragon_code>  → Sipariş oluştur\n"
-        "• /status <order_id>  → Sipariş durumunu kontrol et\n\n"
-        "Örnek:\n"
-        "• /buy CIRAK\n"
-        "• /status 12"
+        "Welcome Dragon Master.\n\n"
+        "Oyuna başlamak için aşağıdaki butona bas."
     )
-    await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+
+    await update.message.reply_text(
+        text,
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
