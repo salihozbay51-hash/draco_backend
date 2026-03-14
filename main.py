@@ -103,6 +103,77 @@ def _get_user_by_telegram(conn, telegram_id: str):
     row = cur.mappings().fetchone()
     return dict(row) if row else None
 
+def _get_user_by_id(conn, user_id: int):
+    cur = conn.execute(
+        text("SELECT * FROM users WHERE id = :uid"),
+        {"uid": int(user_id)},
+    )
+    row = cur.mappings().fetchone()
+    return dict(row) if row else None
+
+
+def _dragon_price_by_code(dragon_code: str) -> float:
+    dragon = DRAGONS.get(str(dragon_code).lower())
+    if not dragon:
+        return 0.0
+    return float(getattr(dragon, "price_usdt", 0) or 0)
+
+
+def _pay_referral_bonus(conn, buyer_user_id: int, purchase_usdt: float):
+    """
+    3 seviyeli referral:
+    level 1 -> %8
+    level 2 -> %3
+    level 3 -> %1
+
+    Ödül AY olarak verilir.
+    500 AY = 1 USDT
+    """
+    buyer = _get_user_by_id(conn, buyer_user_id)
+    if not buyer:
+        return []
+
+    rates = [0.08, 0.03, 0.01]
+    payouts = []
+    visited_ids = {int(buyer_user_id)}
+
+    current_ref_tg = buyer.get("referrer_id")
+
+    for level, rate in enumerate(rates, start=1):
+        if not current_ref_tg:
+            break
+
+        ref_user = _get_user_by_telegram(conn, str(current_ref_tg))
+        if not ref_user:
+            break
+
+        ref_user_id = int(ref_user["id"])
+        if ref_user_id in visited_ids:
+            break
+
+        visited_ids.add(ref_user_id)
+
+        reward_ay = int(round(float(purchase_usdt) * rate * EGG_TO_USDT_RATE))
+        if reward_ay > 0:
+            conn.execute(
+                text("""
+                    UPDATE users
+                    SET eggs_ay = eggs_ay + :reward
+                    WHERE id = :uid
+                """),
+                {"reward": reward_ay, "uid": ref_user_id},
+            )
+
+            payouts.append({
+                "level": level,
+                "telegram_id": ref_user["telegram_id"],
+                "reward_ay": reward_ay,
+            })
+
+        current_ref_tg = ref_user.get("referrer_id")
+
+    return payouts
+
 def _grant_minik_if_missing(conn, user_id: int):
     cur = conn.execute(
         text("SELECT 1 FROM user_dragons WHERE user_id = :uid AND dragon_code = :code LIMIT 1"),
@@ -239,6 +310,9 @@ def _process_tx_if_matches(tx: dict) -> bool:
 
         # 3) Ejderhayı ver
         _grant_dragon(conn, int(order["user_id"]), str(order["dragon_code"]))
+        purchase_usdt = _dragon_price_by_code(str(order["dragon_code"]))
+        if purchase_usdt > 0:
+            _pay_referral_bonus(conn, int(order["user_id"]), purchase_usdt)
 
         return True
 
@@ -867,6 +941,8 @@ def buy_dragon(telegram_id: str, dragon_code: str):
             """),
             {"bal": float(new_balance), "uid": int(user["id"])},
         )
+        
+        _pay_referral_bonus(conn, int(user["id"]), float(price))
 
         return BuyDragonResponse(
             telegram_id=user["telegram_id"],
@@ -1282,6 +1358,10 @@ def admin_confirm_payment(
             raise HTTPException(status_code=404, detail="Sipariş bulunamadı veya aktif değil")
 
         _grant_dragon(conn, int(order["user_id"]), str(order["dragon_code"]))
+
+        purchase_usdt = _dragon_price_by_code(str(order["dragon_code"]))
+        if purchase_usdt > 0:
+            _pay_referral_bonus(conn, int(order["user_id"]), purchase_usdt)
 
         conn.execute(
             text("""
