@@ -12,7 +12,6 @@ def get_conn():
     return engine.connect()
 
 def init_db():
-    # begin() otomatik commit/rollback yapar
     with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS users (
@@ -20,8 +19,14 @@ def init_db():
                 telegram_id TEXT UNIQUE NOT NULL,
                 eggs_ay INTEGER DEFAULT 0,
                 usdt_balance DOUBLE PRECISION DEFAULT 0,
-                last_collect_at TEXT
+                last_collect_at TEXT,
+                referrer_id TEXT
             )
+        """))
+
+        conn.execute(text("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS referrer_id TEXT
         """))
 
         conn.execute(text("""
@@ -38,6 +43,7 @@ def init_db():
                 xp INTEGER DEFAULT 0
             )
         """))
+
 
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS purchase_orders (
