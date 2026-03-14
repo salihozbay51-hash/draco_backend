@@ -444,7 +444,8 @@ def _get_active_dragons(conn, user_id: int):
 
 # --------- Schemas ---------
 class RegisterRequest(BaseModel):
-    telegram_id: str = Field(..., min_length=3, max_length=64)
+    telegram_id: str
+    referrer_id: str | None = None
 
 class RegisterResponse(BaseModel):
     user_id: int
@@ -526,34 +527,44 @@ def root():
 
 @app.post("/users/register", response_model=RegisterResponse)
 def register_user(payload: RegisterRequest):
-    telegram_id = payload.telegram_id.strip()
-    if not telegram_id:
-        raise HTTPException(status_code=400, detail="telegram_id boş olamaz")
 
-    # Tek transaction: user oluştur + minik ver
-    with engine.begin() as conn:
+    telegram_id = payload.telegram_id.strip()
+    referrer = payload.referrer_id
+
+    conn = get_conn()
+
+    try:
         user = _get_user_by_telegram(conn, telegram_id)
 
         if user is None:
-            cur = conn.execute(
+
+            conn.execute(
                 text("""
-                    INSERT INTO users (telegram_id, eggs_ay, usdt_balance, last_collect_at)
-                    VALUES (:tg, 0, 0, NULL)
-                    RETURNING id, telegram_id
+                    INSERT INTO users
+                    (telegram_id, eggs_ay, usdt_balance, last_collect_at, referrer_id)
+                    VALUES
+                    (:tg, 0, 0, NULL, :ref)
                 """),
-                {"tg": telegram_id},
+                {
+                    "tg": telegram_id,
+                    "ref": referrer
+                }
             )
-            user = dict(cur.mappings().fetchone())
 
-        _grant_minik_if_missing(conn, int(user["id"]))
+            conn.commit()
 
-        dragons = _get_active_dragons(conn, int(user["id"]))
+        user = _get_user_by_telegram(conn, telegram_id)
+
+        dragons = _get_active_dragons(conn, user["id"])
 
         return RegisterResponse(
-            user_id=int(user["id"]),
+            user_id=user["id"],
             telegram_id=user["telegram_id"],
-            dragons=dragons,
+            dragons=dragons
         )
+
+    finally:
+        conn.close()
 
 @app.get("/users/{telegram_id}/eggs", response_model=EggsStatusResponse)
 def eggs_status(telegram_id: str):

@@ -11,29 +11,20 @@ WEB_APP_URL = os.getenv(
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="🎮 Play Game",
-                web_app=WebAppInfo(url=WEB_APP_URL)
-            )
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    text = (
-        "🐉 *Draco Kingdom*\n\n"
-        "Welcome Dragon Master.\n\n"
-        "Oyuna başlamak için aşağıdaki butona bas."
-    )
+    user_id = str(update.effective_user.id)
 
-    await update.message.reply_text(
-        text=text,
-        reply_markup=reply_markup,
-        parse_mode=ParseMode.MARKDOWN
-    )
+    referrer = None
+    if context.args:
+        referrer = context.args[0]
 
+    payload = {
+        "telegram_id": user_id,
+        "referrer_id": referrer
+    }
 
+    requests.post(f"{API_URL}/users/register", json=payload)
+    
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN / TELEGRAM_BOT_TOKEN env yok.")
