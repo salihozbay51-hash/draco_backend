@@ -14,6 +14,7 @@ from random import randint
 from db import init_db
 from sqlalchemy import text
 from db import engine  # db.py içinde engine var
+from fastapi.middleware.cors import CORSMiddleware
 
 # .evn isimli bir dosya kullanıyorsan ismini buraya yazmalısın
 # Eğer dosya adını .env yaptıysan parantez içini boş bırakabilirsin: load_dotenv()
@@ -41,6 +42,16 @@ from db import get_conn, init_db
 from models import DRAGONS, MINIK
 
 app = FastAPI(title="Draco Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://dracofrontend-production.up.railway.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
