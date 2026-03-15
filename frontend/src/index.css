@@ -212,3 +212,13 @@ button {
   font-weight: 700;
   margin-bottom: 6px;
 }
+
+.invite-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: white;
+  border-radius: 12px;
+  padding: 12px;
+  outline: none;
+}

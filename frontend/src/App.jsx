@@ -21,6 +21,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [collecting, setCollecting] = useState(false);
   const [error, setError] = useState("");
+  const [refs, setRefs] = useState(null);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -34,12 +35,15 @@ export default function App() {
       return;
     }
 
-    // Telegram dışında önizleme için fallback
     setTelegramId("1525781970");
     setPlayerName("Dragon Master");
   }, []);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
+
+  const inviteLink = telegramId
+    ? `https://t.me/dracokingdom_bot?start=${telegramId}`
+    : "";
 
   async function ensureRegistered(id) {
     await fetch(`${API_BASE}/users/register`, {
@@ -72,6 +76,20 @@ export default function App() {
     }
   }
 
+  async function loadReferrals(id) {
+    try {
+      const res = await fetch(`${API_BASE}/users/${id}/referrals`);
+      if (!res.ok) {
+        throw new Error(`Referral bilgisi alınamadı (${res.status})`);
+      }
+
+      const data = await res.json();
+      setRefs(data);
+    } catch (err) {
+      console.error("Referral fetch error:", err);
+    }
+  }
+
   async function handleCollect() {
     if (!telegramId) return;
 
@@ -89,6 +107,7 @@ export default function App() {
       }
 
       await loadProfile(telegramId);
+      await loadReferrals(telegramId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Collect hatası");
     } finally {
@@ -99,6 +118,7 @@ export default function App() {
   useEffect(() => {
     if (!telegramId) return;
     loadProfile(telegramId);
+    loadReferrals(telegramId);
   }, [telegramId]);
 
   return (
@@ -196,6 +216,63 @@ export default function App() {
             <span className="muted">Cash out USDT</span>
           </button>
         </div>
+
+        <div className="card">
+          <div className="section-head">
+            <h3>Invite Friends</h3>
+            <span className="muted">Referral System</span>
+          </div>
+
+          <div className="dragon-item">
+            <p className="muted" style={{ marginBottom: 8 }}>
+              Your invite link
+            </p>
+
+            <input
+              value={inviteLink}
+              readOnly
+              className="invite-input"
+            />
+
+            <button
+              className="collect-btn"
+              style={{ marginTop: 12 }}
+              onClick={() => {
+                if (inviteLink) {
+                  navigator.clipboard.writeText(inviteLink);
+                }
+              }}
+            >
+              Copy Link
+            </button>
+          </div>
+        </div>
+
+        {refs && (
+          <div className="card">
+            <div className="section-head">
+              <h3>Referrals</h3>
+              <span className="muted">3 Levels</span>
+            </div>
+
+            <div className="stats-grid">
+              <div className="stat-card">
+                <p className="muted">Level 1</p>
+                <h2>{refs.level1}</h2>
+              </div>
+
+              <div className="stat-card">
+                <p className="muted">Level 2</p>
+                <h2>{refs.level2}</h2>
+              </div>
+
+              <div className="stat-card">
+                <p className="muted">Level 3</p>
+                <h2>{refs.level3}</h2>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
