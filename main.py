@@ -1324,6 +1324,67 @@ def admin_reject_withdraw(
 
         return {"ok": True, "status": "rejected"}
 
+@app.get("/users/{telegram_id}/referrals")
+def get_referrals(telegram_id: str):
+
+    conn = get_conn()
+
+    try:
+        user = _get_user_by_telegram(conn, telegram_id)
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_id = int(user["id"])
+
+        # Level 1
+        lvl1 = conn.execute(
+            text("SELECT COUNT(*) FROM users WHERE referrer_id = :tg"),
+            {"tg": telegram_id}
+        ).scalar()
+
+        # Level 2
+        lvl2 = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE referrer_id IN (
+                    SELECT telegram_id
+                    FROM users
+                    WHERE referrer_id = :tg
+                )
+            """),
+            {"tg": telegram_id}
+        ).scalar()
+
+        # Level 3
+        lvl3 = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE referrer_id IN (
+                    SELECT telegram_id
+                    FROM users
+                    WHERE referrer_id IN (
+                        SELECT telegram_id
+                        FROM users
+                        WHERE referrer_id = :tg
+                    )
+                )
+            """),
+            {"tg": telegram_id}
+        ).scalar()
+
+        return {
+            "telegram_id": telegram_id,
+            "level1": int(lvl1 or 0),
+            "level2": int(lvl2 or 0),
+            "level3": int(lvl3 or 0)
+        }
+
+    finally:
+        conn.close()
+
 
 from fastapi import Body
 
