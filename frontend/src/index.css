@@ -298,3 +298,10 @@ body {
   padding: 10px;
   text-align: center;
 }
+
+.chamber-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #facc15;
+}

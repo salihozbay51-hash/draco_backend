@@ -178,34 +178,29 @@ export default function App() {
   <div className="dragon-grid">
 
     {profile?.dragons?.map((dragon) => (
-      <div key={dragon.id} className="dragon-card">
+<div key={dragon.id} className="dragon-card">
 
-        <strong>{dragon.dragon_code}</strong>
+  <strong>
+🐉 {dragon.dragon_code.charAt(0).toUpperCase() + dragon.dragon_code.slice(1)}
+</strong>
 
-        <div className="muted">
-          Level {dragon.level}
-        </div>
+  <div className="muted">
+    Level {dragon.level}
+  </div>
 
-        <div className="tiny">
-          {dragon.eggs_per_day} eggs/day
-        </div>
+  <div className="tiny">
+    🥚 {dragon.eggs_per_day} eggs/day
+  </div>
 
-        <div className="tiny">
-          {dragon.remaining_days} days left
-        </div>
+  <div className="tiny">
+    ⏳ {dragon.remaining_days} days left
+  </div>
 
-      </div>
+</div>
     ))}
 
   </div>
 </div>
-
-<button
-  className="collect-main"
-  onClick={handleCollect}
->
-  Collect Eggs
-</button>
 
         <div className="bottom-grid">
           <button className="nav-card">
