@@ -222,3 +222,79 @@ button {
   padding: 12px;
   outline: none;
 }
+
+/* Dragon Lair Theme */
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(circle at top, #1e293b, #020617);
+  color: white;
+}
+
+.lair-container {
+  max-width: 420px;
+  margin: auto;
+  padding: 16px;
+}
+
+.resource-bar {
+  display: flex;
+  justify-content: space-between;
+  background: #0f172a;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.resource {
+  text-align: center;
+}
+
+.dragon-chamber {
+  background: #0f172a;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.chamber-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.dragon-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dragon-card {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.collect-main {
+  margin-top: 16px;
+  width: 100%;
+  padding: 14px;
+  background: #22c55e;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.bottom-menu {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 8px;
+}
+
+.menu-btn {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}

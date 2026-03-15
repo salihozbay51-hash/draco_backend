@@ -172,38 +172,40 @@ export default function App() {
           )}
         </div>
 
-        <div className="card">
-          <div className="section-head">
-            <h3>My Dragons</h3>
-            <span className="muted">{activeCount} Active</span>
-          </div>
+        <div className="dragon-chamber">
+  <div className="chamber-title">🔥 Dragon Chamber</div>
 
-          <div className="dragon-list">
-            {!loading && !profile?.dragons?.length ? (
-              <div className="dragon-item empty-item">Henüz dragon yok.</div>
-            ) : (
-              profile?.dragons?.map((dragon) => (
-                <div key={dragon.id} className="dragon-item">
-                  <div className="dragon-row">
-                    <div>
-                      <p className="dragon-name">{prettyCode(dragon.dragon_code)}</p>
-                      <p className="muted">
-                        Level {dragon.level} • XP {dragon.xp}
-                      </p>
-                    </div>
-                    <div className="dragon-right">
-                      <p className="muted">{dragon.eggs_per_day} eggs/day</p>
-                      <p className="days-left">{dragon.remaining_days} days left</p>
-                    </div>
-                  </div>
-                  <div className="tiny pending-line">
-                    Pending eggs: {dragon.pending_eggs_ay}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+  <div className="dragon-grid">
+
+    {profile?.dragons?.map((dragon) => (
+      <div key={dragon.id} className="dragon-card">
+
+        <strong>{dragon.dragon_code}</strong>
+
+        <div className="muted">
+          Level {dragon.level}
         </div>
+
+        <div className="tiny">
+          {dragon.eggs_per_day} eggs/day
+        </div>
+
+        <div className="tiny">
+          {dragon.remaining_days} days left
+        </div>
+
+      </div>
+    ))}
+
+  </div>
+</div>
+
+<button
+  className="collect-main"
+  onClick={handleCollect}
+>
+  Collect Eggs
+</button>
 
         <div className="bottom-grid">
           <button className="nav-card">
