@@ -22,62 +22,15 @@ export default function App() {
   const [collecting, setCollecting] = useState(false);
   const [error, setError] = useState("");
   const [refs, setRefs] = useState(null);
-  const [page, setPage] = useState("home")
-
-  async function buyDragon(code){
-
-try{
-
-const res = await fetch(
-`${API_BASE}/users/${telegramId}/buy/${code}`,
-{
-method: "POST"
-}
-)
-
-const data = await res.json()
-
-alert(data.message || "Dragon purchased!")
-
-loadProfile(telegramId)
-
-}catch(e){
-
-alert("Purchase failed")
-
-}
-
-}
-
-  useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    tg?.ready?.();
-    tg?.expand?.();
-
-    const tgUser = tg?.initDataUnsafe?.user;
-    if (tgUser?.id) {
-      setTelegramId(String(tgUser.id));
-      setPlayerName(tgUser.first_name || tgUser.username || "Dragon Master");
-      return;
-    }
-
-    setTelegramId("1525781970");
-    setPlayerName("Dragon Master");
-  }, []);
-
-  const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
-
-  const inviteLink = telegramId
-    ? `https://t.me/dracokingdom_bot?start=${telegramId}`
-    : "";
+  const [page, setPage] = useState("home");
 
   async function ensureRegistered(id) {
     await fetch(`${API_BASE}/users/register`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ telegram_id: id })
+      body: JSON.stringify({ telegram_id: id }),
     });
   }
 
@@ -116,6 +69,28 @@ alert("Purchase failed")
     }
   }
 
+  async function buyDragon(code) {
+    try {
+      const res = await fetch(`${API_BASE}/users/${telegramId}/buy/${code}`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.detail || data.message || "Purchase failed");
+        return;
+      }
+
+      alert(data.message || "Dragon purchased!");
+      await loadProfile(telegramId);
+      await loadReferrals(telegramId);
+      setPage("home");
+    } catch (e) {
+      alert("Purchase failed");
+    }
+  }
+
   async function handleCollect() {
     if (!telegramId) return;
 
@@ -124,7 +99,7 @@ alert("Purchase failed")
       setError("");
 
       const res = await fetch(`${API_BASE}/users/${telegramId}/collect`, {
-        method: "POST"
+        method: "POST",
       });
 
       if (!res.ok) {
@@ -142,10 +117,32 @@ alert("Purchase failed")
   }
 
   useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    tg?.ready?.();
+    tg?.expand?.();
+
+    const tgUser = tg?.initDataUnsafe?.user;
+    if (tgUser?.id) {
+      setTelegramId(String(tgUser.id));
+      setPlayerName(tgUser.first_name || tgUser.username || "Dragon Master");
+      return;
+    }
+
+    setTelegramId("1525781970");
+    setPlayerName("Dragon Master");
+  }, []);
+
+  useEffect(() => {
     if (!telegramId) return;
     loadProfile(telegramId);
     loadReferrals(telegramId);
   }, [telegramId]);
+
+  const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
+
+  const inviteLink = telegramId
+    ? `https://t.me/dracokingdom_bot?start=${telegramId}`
+    : "";
 
   return (
     <div className="app-shell">
@@ -157,6 +154,7 @@ alert("Purchase failed")
               <h1>{playerName}</h1>
               <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
             </div>
+
             <div className="stat-badge">
               <span className="tiny">Active Dragons</span>
               <strong>{activeCount}</strong>
@@ -198,92 +196,73 @@ alert("Purchase failed")
           )}
         </div>
 
-        <div className="dragon-chamber">
-  <div className="chamber-title">🔥 Dragon Chamber</div>
+        {page === "home" && (
+          <>
+            <div className="dragon-chamber">
+              <div className="chamber-title">🔥 Dragon Chamber</div>
 
-  {page === "market" && (
+              <div className="dragon-grid">
+                {profile?.dragons?.map((dragon) => (
+                  <div key={dragon.id} className="dragon-card">
+                    <strong>🐉 {prettyCode(dragon.dragon_code)}</strong>
 
-<div className="dragon-chamber">
+                    <div className="muted">Level {dragon.level}</div>
 
-<div className="chamber-title">🏪 Draco Market</div>
+                    <div className="tiny">
+                      🥚 {dragon.eggs_per_day} eggs/day
+                    </div>
 
-<div className="dragon-grid">
+                    <div className="tiny">
+                      ⏳ {dragon.remaining_days} days left
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-<div className="dragon-card">
+        {page === "market" && (
+          <div className="dragon-chamber">
+            <div className="chamber-title">🏪 Draco Market</div>
 
-<strong>🐉 Minik Dragon</strong>
+            <div className="dragon-grid">
+              <div className="dragon-card">
+                <strong>🐉 Minik Dragon</strong>
+                <div className="tiny">🥚 2 eggs/day</div>
+                <div className="tiny">💰 Price: 15 USDT</div>
 
-<div className="tiny">
-🥚 2 eggs/day
-</div>
+                <button
+                  className="collect-main"
+                  onClick={() => buyDragon("minik")}
+                >
+                  Buy
+                </button>
+              </div>
 
-<div className="tiny">
-💰 Price: 15 USDT
-</div>
+              <div className="dragon-card">
+                <strong>🐉 Cirak Dragon</strong>
+                <div className="tiny">🥚 170 eggs/day</div>
+                <div className="tiny">💰 Price: 50 USDT</div>
 
-<button
-className="collect-main"
-onClick={() => buyDragon("minik")}
->
-Buy
-</button>
+                <button
+                  className="collect-main"
+                  onClick={() => buyDragon("cirak")}
+                >
+                  Buy
+                </button>
+              </div>
+            </div>
 
-</div>
-
-
-<div className="dragon-card">
-
-<strong>🐉 Cirak Dragon</strong>
-
-<div className="tiny">
-🥚 170 eggs/day
-</div>
-
-<div className="tiny">
-💰 Price: 50 USDT
-</div>
-
-<button
-className="collect-main"
-onClick={() => buyDragon("cirak")}
->
-Buy
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-)}
-
-  <div className="dragon-grid">
-
-    {profile?.dragons?.map((dragon) => (
-<div key={dragon.id} className="dragon-card">
-
-  <strong>
-🐉 {dragon.dragon_code.charAt(0).toUpperCase() + dragon.dragon_code.slice(1)}
-</strong>
-
-  <div className="muted">
-    Level {dragon.level}
-  </div>
-
-  <div className="tiny">
-    🥚 {dragon.eggs_per_day} eggs/day
-  </div>
-
-  <div className="tiny">
-    ⏳ {dragon.remaining_days} days left
-  </div>
-
-</div>
-    ))}
-
-  </div>
-</div>
+            <button
+              className="collect-btn"
+              style={{ marginTop: 16 }}
+              onClick={() => setPage("home")}
+            >
+              Back to Home
+            </button>
+          </div>
+        )}
 
         <div className="bottom-grid">
           <button className="nav-card" onClick={() => setPage("market")}>
@@ -308,11 +287,7 @@ Buy
               Your invite link
             </p>
 
-            <input
-              value={inviteLink}
-              readOnly
-              className="invite-input"
-            />
+            <input value={inviteLink} readOnly className="invite-input" />
 
             <button
               className="collect-btn"
