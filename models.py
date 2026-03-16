@@ -17,4 +17,3 @@ EFSANE = Dragon("efsane", 180,  2200, 90)
 
 
 DRAGONS = {d.code: d for d in [MINIK, CIRAK, BRONZ, GUMUS, ALTIN, EFSANE]}
-
