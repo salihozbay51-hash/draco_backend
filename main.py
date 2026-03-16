@@ -317,18 +317,10 @@ def _process_tx_if_matches(tx: dict) -> bool:
         return True
 
 def _grant_dragon(conn, user_id: int, dragon_code: str):
-    dragon_code = dragon_code.strip().upper()
+    dragon_code = dragon_code.strip().lower()
 
-    EGGS_PER_DAY = {
-        "MINIK": 2,
-        "CIRAK": 170,
-        "BRONZ": 335,
-        "GUMUS": 500,
-        "ALTIN": 725,
-        "EFSANE": 1170,
-    }
-
-    if dragon_code not in EGGS_PER_DAY:
+    dragon = DRAGONS.get(dragon_code)
+    if not dragon:
         raise HTTPException(status_code=400, detail="Geçersiz ejderha")
 
     # zaten aktif varsa tekrar verme
@@ -339,13 +331,13 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
             WHERE user_id = :uid AND dragon_code = :code AND is_active = 1
             LIMIT 1
         """),
-        {"uid": int(user_id), "code": dragon_code},
+        {"uid": int(user_id), "code": dragon.code},
     )
     if cur.fetchone():
         return
 
     now = utcnow()
-    expires = (now + timedelta(days=90)).isoformat()
+    expires = (now + timedelta(days=dragon.lifetime_days)).isoformat()
     now_str = now.isoformat()
 
     conn.execute(
@@ -357,12 +349,13 @@ def _grant_dragon(conn, user_id: int, dragon_code: str):
         """),
         {
             "uid": int(user_id),
-            "code": dragon_code,
-            "epd": int(EGGS_PER_DAY[dragon_code]),
+            "code": dragon.code,
+            "epd": int(dragon.eggs_per_day),
             "started": now_str,
             "expires": expires,
         },
-    )    
+    )
+
 def production_multiplier(level: int) -> float:
     """
     Level 1 = bonus yok
@@ -601,9 +594,11 @@ def root():
 
 @app.post("/users/register", response_model=RegisterResponse)
 def register_user(payload: RegisterRequest):
-
     telegram_id = payload.telegram_id.strip()
-    referrer = payload.referrer_id
+    referrer = payload.referrer_id.strip() if payload.referrer_id else None
+
+    if referrer == telegram_id:
+        referrer = None
 
     conn = get_conn()
 
@@ -611,6 +606,10 @@ def register_user(payload: RegisterRequest):
         user = _get_user_by_telegram(conn, telegram_id)
 
         if user is None:
+            if referrer:
+                ref_user = _get_user_by_telegram(conn, referrer)
+                if not ref_user:
+                    referrer = None
 
             conn.execute(
                 text("""
@@ -624,10 +623,13 @@ def register_user(payload: RegisterRequest):
                     "ref": referrer
                 }
             )
-
             conn.commit()
 
         user = _get_user_by_telegram(conn, telegram_id)
+
+        # Her kullanıcıya ücretsiz Minik ver
+        _grant_minik_if_missing(conn, int(user["id"]))
+        conn.commit()
 
         dragons = _get_active_dragons(conn, user["id"])
 
@@ -890,10 +892,10 @@ class BuyDragonResponse(BaseModel):
     expires_at: str
 
 
-@app.post("/users/{telegram_id}/buy/{dragon_code}", response_model=BuyDragonResponse)
+@app.@app.post("/users/{telegram_id}/buy/{dragon_code}", response_model=BuyDragonResponse)
 def buy_dragon(telegram_id: str, dragon_code: str):
     telegram_id = telegram_id.strip()
-    dragon_code = dragon_code.strip()
+    dragon_code = dragon_code.strip().lower()
 
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -903,9 +905,15 @@ def buy_dragon(telegram_id: str, dragon_code: str):
         now = utcnow()
         _deactivate_expired_dragons(conn, int(user["id"]), now)
 
-        dragon = DRAGONS.get(dragon_code.lower())
+        dragon = DRAGONS.get(dragon_code)
         if dragon is None:
             raise HTTPException(status_code=404, detail="Ejderha bulunamadı")
+
+        if dragon.code == "minik" or float(dragon.price_usdt) <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Minik ejderha ücretsiz starter dragon, satın alınamaz"
+            )
 
         price = float(dragon.price_usdt)
         usdt_balance = float(user.get("usdt_balance") or 0)
@@ -941,7 +949,7 @@ def buy_dragon(telegram_id: str, dragon_code: str):
             """),
             {"bal": float(new_balance), "uid": int(user["id"])},
         )
-        
+
         _pay_referral_bonus(conn, int(user["id"]), float(price))
 
         return BuyDragonResponse(
@@ -1450,37 +1458,27 @@ def admin_confirm_payment(
 
 @app.post("/shop/orders")
 def create_shop_order(req: CreateOrderRequest):
-    dragon_code = req.dragon_code.strip().upper()
+    dragon_code = req.dragon_code.strip().lower()
 
-    VALID_DRAGONS = {"MINIK", "CIRAK", "BRONZ", "GUMUS", "ALTIN", "EFSANE"}
-    if dragon_code not in VALID_DRAGONS:
+    dragon = DRAGONS.get(dragon_code)
+    if not dragon:
         raise HTTPException(status_code=400, detail="Geçersiz ejderha")
 
-    DRAGON_PRICES = {
-        "MINIK": 0,
-        "CIRAK": 15,
-        "BRONZ": 30,
-        "GUMUS": 45,
-        "ALTIN": 65,
-        "EFSANE": 105,
-    }
-    price_usdt = DRAGON_PRICES[dragon_code]
-    if price_usdt <= 0:
+    # Minik ücretsiz starter, satın alınamaz
+    if dragon.code == "minik" or float(dragon.price_usdt) <= 0:
         raise HTTPException(status_code=400, detail="Bu ejderha satın alınamaz")
 
     deposit_address = os.getenv("TRON_DEPOSIT_ADDRESS", "").strip()
     if not deposit_address:
         raise HTTPException(status_code=500, detail="TRON_DEPOSIT_ADDRESS ayarlı değil")
 
-    # Tek transaction
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, req.telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-        # Benzersiz tutar
         unique_cents = randint(1, 99) / 100
-        expected_amount = round(price_usdt + unique_cents, 2)
+        expected_amount = round(float(dragon.price_usdt) + unique_cents, 2)
 
         now = utcnow()
         expires_at = (now + timedelta(minutes=30)).isoformat()
@@ -1496,7 +1494,7 @@ def create_shop_order(req: CreateOrderRequest):
             """),
             {
                 "uid": int(user["id"]),
-                "code": dragon_code,
+                "code": dragon.code.upper(),
                 "amt": float(expected_amount),
                 "exp": expires_at,
                 "created": created_at,

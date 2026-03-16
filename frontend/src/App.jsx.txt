@@ -23,6 +23,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [refs, setRefs] = useState(null);
   const [page, setPage] = useState("home");
+  const [marketDragons, setMarketDragons] = useState([]);
 
   async function ensureRegistered(id) {
     await fetch(`${API_BASE}/users/register`, {
@@ -55,41 +56,44 @@ export default function App() {
     }
   }
 
-  async function loadReferrals(id) {
-    try {
-      const res = await fetch(`${API_BASE}/users/${id}/referrals`);
-      if (!res.ok) {
-        throw new Error(`Referral bilgisi alınamadı (${res.status})`);
-      }
-
-      const data = await res.json();
-      setRefs(data);
-    } catch (err) {
-      console.error("Referral fetch error:", err);
+  async function loadMarket() {
+  try {
+    const res = await fetch(`${API_BASE}/market/dragons`);
+    if (!res.ok) {
+      throw new Error("Market yüklenemedi");
     }
+
+    const data = await res.json();
+
+    // Minik starter-only olduğu için markette gösterme
+    const filtered = (data.dragons || []).filter((d) => !d.is_starter_only);
+    setMarketDragons(filtered);
+  } catch (err) {
+    console.error("Market fetch error:", err);
   }
+}
 
   async function buyDragon(code) {
-    try {
-      const res = await fetch(`${API_BASE}/users/${telegramId}/buy/${code}`, {
-        method: "POST",
-      });
+  try {
+    const res = await fetch(`${API_BASE}/users/${telegramId}/buy/${code}`, {
+      method: "POST",
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        alert(data.detail || data.message || "Purchase failed");
-        return;
-      }
-
-      alert(data.message || "Dragon purchased!");
-      await loadProfile(telegramId);
-      await loadReferrals(telegramId);
-      setPage("home");
-    } catch (e) {
-      alert("Purchase failed");
+    if (!res.ok) {
+      alert(data.detail || "Purchase failed");
+      return;
     }
+
+    alert(`${prettyCode(data.dragon_code)} başarıyla satın alındı!`);
+    await loadProfile(telegramId);
+    await loadReferrals(telegramId);
+    setPage("home");
+  } catch (e) {
+    alert("Purchase failed");
   }
+}
 
   async function handleCollect() {
     if (!telegramId) return;
@@ -133,10 +137,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!telegramId) return;
-    loadProfile(telegramId);
-    loadReferrals(telegramId);
-  }, [telegramId]);
+  if (!telegramId) return;
+  loadProfile(telegramId);
+  loadReferrals(telegramId);
+  loadMarket();
+}, [telegramId]);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
 
@@ -223,46 +228,36 @@ export default function App() {
         )}
 
         {page === "market" && (
-          <div className="dragon-chamber">
-            <div className="chamber-title">🏪 Draco Market</div>
+  <div className="dragon-chamber">
+    <div className="chamber-title">🏪 Draco Market</div>
 
-            <div className="dragon-grid">
-              <div className="dragon-card">
-                <strong>🐉 Minik Dragon</strong>
-                <div className="tiny">🥚 2 eggs/day</div>
-                <div className="tiny">💰 Price: 15 USDT</div>
+    <div className="dragon-grid">
+      {marketDragons.map((dragon) => (
+        <div key={dragon.code} className="dragon-card">
+          <strong>🐉 {prettyCode(dragon.code)}</strong>
+          <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
+          <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
+          <div className="tiny">⏳ {dragon.lifetime_days} days</div>
 
-                <button
-                  className="collect-main"
-                  onClick={() => buyDragon("minik")}
-                >
-                  Buy
-                </button>
-              </div>
+          <button
+            className="collect-main"
+            onClick={() => buyDragon(dragon.code)}
+          >
+            Buy
+          </button>
+        </div>
+      ))}
+    </div>
 
-              <div className="dragon-card">
-                <strong>🐉 Cirak Dragon</strong>
-                <div className="tiny">🥚 170 eggs/day</div>
-                <div className="tiny">💰 Price: 50 USDT</div>
-
-                <button
-                  className="collect-main"
-                  onClick={() => buyDragon("cirak")}
-                >
-                  Buy
-                </button>
-              </div>
-            </div>
-
-            <button
-              className="collect-btn"
-              style={{ marginTop: 16 }}
-              onClick={() => setPage("home")}
-            >
-              Back to Home
-            </button>
-          </div>
-        )}
+    <button
+      className="collect-btn"
+      style={{ marginTop: 16 }}
+      onClick={() => setPage("home")}
+    >
+      Back to Home
+    </button>
+  </div>
+)}
 
         <div className="bottom-grid">
           <button className="nav-card" onClick={() => setPage("market")}>
