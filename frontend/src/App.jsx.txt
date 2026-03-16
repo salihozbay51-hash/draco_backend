@@ -56,20 +56,6 @@ export default function App() {
     }
   }
 
-  async function loadReferrals(id) {
-  try {
-    const res = await fetch(`${API_BASE}/users/${id}/referrals`);
-    if (!res.ok) {
-      throw new Error(`Referral bilgisi alınamadı (${res.status})`);
-    }
-
-    const data = await res.json();
-    setRefs(data);
-  } catch (err) {
-    console.error("Referral fetch error:", err);
-  }
-}
-
   async function loadMarket() {
   try {
     const res = await fetch(`${API_BASE}/market/dragons`);
