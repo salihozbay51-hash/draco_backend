@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
-const [page, setPage] = useState("home")
 
 function prettyCode(code) {
   if (!code) return "Dragon";
@@ -23,8 +22,9 @@ export default function App() {
   const [collecting, setCollecting] = useState(false);
   const [error, setError] = useState("");
   const [refs, setRefs] = useState(null);
+  const [page, setPage] = useState("home")
 
-async function buyDragon(code){
+  async function buyDragon(code){
 
 try{
 
@@ -39,7 +39,7 @@ const data = await res.json()
 
 alert(data.message || "Dragon purchased!")
 
-loadProfile()
+loadProfile(telegramId)
 
 }catch(e){
 
