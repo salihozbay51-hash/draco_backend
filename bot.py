@@ -6,9 +6,13 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN")
 WEB_APP_URL = os.getenv(
     "WEB_APP_URL",
-    "https://dracobackend-production-6b8f.up.railway.app"
+    "https://dracofrontend-production.up.railway.app"
 ).rstrip("/")
 
+
+import requests
+
+API_URL = "https://dracobackend-production-6b8f.up.railway.app"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -23,7 +27,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "referrer_id": referrer
     }
 
-    requests.post(f"{API_URL}/users/register", json=payload)
+    # kullanıcıyı register et
+    try:
+        requests.post(f"{API_URL}/users/register", json=payload)
+    except:
+        pass
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text="🎮 Play Game",
+                web_app=WebAppInfo(url=WEB_APP_URL)
+            )
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "🐉 Draco Kingdom\n\nWelcome Dragon Master.\n\nOyuna başlamak için aşağıdaki butona bas.",
+        reply_markup=reply_markup
+    )
     
 def main():
     if not BOT_TOKEN:
