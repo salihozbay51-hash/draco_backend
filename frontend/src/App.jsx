@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
+const [page, setPage] = useState("home")
 
 function prettyCode(code) {
   if (!code) return "Dragon";
@@ -22,6 +23,31 @@ export default function App() {
   const [collecting, setCollecting] = useState(false);
   const [error, setError] = useState("");
   const [refs, setRefs] = useState(null);
+
+async function buyDragon(code){
+
+try{
+
+const res = await fetch(
+`${API_BASE}/users/${telegramId}/buy/${code}`,
+{
+method: "POST"
+}
+)
+
+const data = await res.json()
+
+alert(data.message || "Dragon purchased!")
+
+loadProfile()
+
+}catch(e){
+
+alert("Purchase failed")
+
+}
+
+}
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -175,6 +201,63 @@ export default function App() {
         <div className="dragon-chamber">
   <div className="chamber-title">🔥 Dragon Chamber</div>
 
+  {page === "market" && (
+
+<div className="dragon-chamber">
+
+<div className="chamber-title">🏪 Draco Market</div>
+
+<div className="dragon-grid">
+
+<div className="dragon-card">
+
+<strong>🐉 Minik Dragon</strong>
+
+<div className="tiny">
+🥚 2 eggs/day
+</div>
+
+<div className="tiny">
+💰 Price: 15 USDT
+</div>
+
+<button
+className="collect-main"
+onClick={() => buyDragon("minik")}
+>
+Buy
+</button>
+
+</div>
+
+
+<div className="dragon-card">
+
+<strong>🐉 Cirak Dragon</strong>
+
+<div className="tiny">
+🥚 170 eggs/day
+</div>
+
+<div className="tiny">
+💰 Price: 50 USDT
+</div>
+
+<button
+className="collect-main"
+onClick={() => buyDragon("cirak")}
+>
+Buy
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+)}
+
   <div className="dragon-grid">
 
     {profile?.dragons?.map((dragon) => (
@@ -203,7 +286,7 @@ export default function App() {
 </div>
 
         <div className="bottom-grid">
-          <button className="nav-card">
+          <button className="nav-card" onClick={() => setPage("market")}>
             <span className="nav-title">🏪 Market</span>
             <span className="muted">Buy new dragons</span>
           </button>
