@@ -892,7 +892,7 @@ class BuyDragonResponse(BaseModel):
     expires_at: str
 
 
-@app.@app.post("/users/{telegram_id}/buy/{dragon_code}", response_model=BuyDragonResponse)
+@app.post("/users/{telegram_id}/buy/{dragon_code}", response_model=BuyDragonResponse)
 def buy_dragon(telegram_id: str, dragon_code: str):
     telegram_id = telegram_id.strip()
     dragon_code = dragon_code.strip().lower()
