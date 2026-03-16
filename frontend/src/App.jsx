@@ -96,7 +96,7 @@ export default function App() {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.detail || "Purchase failed");
+      alert(data.detail || "Yetersiz bakiye veya satın alma başarısız");
       return;
     }
 
@@ -105,7 +105,7 @@ export default function App() {
     await loadReferrals(telegramId);
     setPage("home");
   } catch (e) {
-    alert("Purchase failed");
+    alert("Satın alma sırasında bir hata oluştu");
   }
 }
 
