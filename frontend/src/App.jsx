@@ -273,13 +273,48 @@ export default function App() {
   </div>
 )}
 
+    {page === "withdraw" && (
+  <div className="dragon-chamber">
+    <div className="chamber-title">💸 Withdraw</div>
+
+    <div className="dragon-card">
+      <div className="tiny">Available balance</div>
+      <strong>{profile?.usdt_balance ?? 0} USDT</strong>
+    </div>
+
+    <input
+      className="invite-input"
+      placeholder="Wallet address"
+      style={{ marginTop: 12 }}
+    />
+
+    <input
+      className="invite-input"
+      placeholder="Amount"
+      style={{ marginTop: 12 }}
+    />
+
+    <button className="collect-btn" style={{ marginTop: 12 }}>
+      Submit Withdraw
+    </button>
+
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={() => setPage("home")}
+    >
+      Back to Home
+    </button>
+  </div>
+)}
+
         <div className="bottom-grid">
           <button className="nav-card" onClick={() => setPage("market")}>
             <span className="nav-title">🏪 Market</span>
             <span className="muted">Buy new dragons</span>
           </button>
 
-          <button className="nav-card">
+          <button className="nav-card" onClick={() => setPage("withdraw")}>
             <span className="nav-title">💸 Withdraw</span>
             <span className="muted">Cash out USDT</span>
           </button>
