@@ -382,7 +382,7 @@ export default function App() {
       Back to Home
     </button>
     <div style={{ marginTop: 20 }}>
-      <div className="chamber-title">📜 Withdraw History</div>
+      <div className="chamber-title">📜TEST HISTORY</div>
 
   {withdrawHistory.length === 0 ? (
     <div className="tiny">Henüz çekim talebi yok</div>
