@@ -1332,6 +1332,38 @@ def admin_reject_withdraw(
 
         return {"ok": True, "status": "rejected"}
 
+@app.get("/users/{telegram_id}/withdraws")
+def user_withdraw_history(telegram_id: str):
+    telegram_id = telegram_id.strip()
+
+    with engine.begin() as conn:
+        user = _get_user_by_telegram(conn, telegram_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+        cur = conn.execute(
+            text("""
+                SELECT
+                    id,
+                    amount_net_usdt,
+                    fee_usdt,
+                    amount_gross_usdt,
+                    address,
+                    status,
+                    note,
+                    created_at,
+                    updated_at
+                FROM withdraw_requests
+                WHERE user_id = :uid
+                ORDER BY id DESC
+            """),
+            {"uid": int(user["id"])},
+        )
+
+        return {
+            "items": [dict(r) for r in cur.mappings().all()]
+        }
+
 @app.get("/users/{telegram_id}/referrals")
 def get_referrals(telegram_id: str):
 
