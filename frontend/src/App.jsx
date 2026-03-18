@@ -166,7 +166,11 @@ export default function App() {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.detail || "Withdraw başarısız");
+      throw new Error(
+        typeof data.detail === "string"
+          ? data.detail 
+          : JSON.stringify(data.detail) 
+      );
     }
 
     alert("Withdraw talebi gönderildi!");
