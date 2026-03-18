@@ -26,6 +26,7 @@ export default function App() {
   const [marketDragons, setMarketDragons] = useState([]);
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawHistory, setWithdrawHistory] = useState([]);
 
   async function ensureRegistered(id) {
     await fetch(`${API_BASE}/users/register`, {
@@ -86,6 +87,20 @@ export default function App() {
     setMarketDragons(filtered);
   } catch (err) {
     console.error("Market fetch error:", err);
+  }
+}
+
+  async function loadWithdrawHistory(id) {
+  try {
+    const res = await fetch(`${API_BASE}/users/${id}/withdraws`);
+    if (!res.ok) {
+      throw new Error(`Withdraw history alınamadı (${res.status})`);
+    }
+
+    const data = await res.json();
+    setWithdrawHistory(data.items || []);
+  } catch (err) {
+    console.error("Withdraw history fetch error:", err);
   }
 }
 
@@ -179,6 +194,7 @@ export default function App() {
     setWithdrawAmount("");
 
     await loadProfile(telegramId);
+    await loadWithdrawHistory(telegramId);
 
   } catch (err) {
     setError(err instanceof Error ? err.message : "Withdraw hatası");
@@ -206,6 +222,7 @@ export default function App() {
   loadProfile(telegramId);
   loadReferrals(telegramId);
   loadMarket();
+  loadWithdrawHistory(telegramId);
 }, [telegramId]);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
@@ -364,8 +381,29 @@ export default function App() {
     >
       Back to Home
     </button>
-  </div>
-)}
+    <div style={{ marginTop: 20 }}>
+      <div className="chamber-title">📜 Withdraw History</div>
+
+  {withdrawHistory.length === 0 ? (
+    <div className="tiny">Henüz çekim talebi yok</div>
+  ) : (
+    withdrawHistory.map((w) => (
+      <div key={w.id} className="dragon-card" style={{ marginTop: 10 }}>
+        <div><strong>{w.amount_net_usdt} USDT</strong></div>
+        <div className="tiny">Fee: {w.fee_usdt} USDT</div>
+        <div className="tiny">Total Debit: {w.amount_gross_usdt} USDT</div>
+        <div className="tiny">Status: {w.status}</div>
+        <div className="tiny">Address: {w.address}</div>
+        <div className="tiny">
+          Date: {new Date(w.created_at).toLocaleString()}
+        </div>
+        {w.note && (
+          <div className="tiny">Note: {w.note}</div>
+        )}
+      </div>
+    ))
+  )}
+</div>
 
         <div className="bottom-grid">
           <button className="nav-card" onClick={() => setPage("market")}>
