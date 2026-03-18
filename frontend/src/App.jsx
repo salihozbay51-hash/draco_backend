@@ -237,9 +237,11 @@ export default function App() {
         <div className="card hero-card">
           <div className="hero-top">
             <div>
+            </div>
               <p className="muted">🐉 Draco Kingdom</p>
               <h1>{playerName}</h1>
               <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
+            </div>
             </div>
 
             <div className="stat-badge">
@@ -281,7 +283,6 @@ export default function App() {
               </p>
             </>
           )}
-        </div>
 
         {page === "home" && (
           <>
