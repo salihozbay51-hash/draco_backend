@@ -24,6 +24,8 @@ export default function App() {
   const [refs, setRefs] = useState(null);
   const [page, setPage] = useState("home");
   const [marketDragons, setMarketDragons] = useState([]);
+  const [withdrawAddress, setWithdrawAddress] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   async function ensureRegistered(id) {
     await fetch(`${API_BASE}/users/register`, {
@@ -133,6 +135,51 @@ export default function App() {
       setCollecting(false);
     }
   }
+
+  async function handleWithdraw() {
+    if (!telegramId) return;
+
+    try {
+      setError("");
+
+      if (!withdrawAddress || !withdrawAmount) {
+        setError("Cüzdan adresi ve miktar zorunlu");
+        return;
+      }
+
+      if (Number(withdrawAmount) < 5) {
+        setError("Minimum çekim 5 USDT");
+        return;
+      }
+
+    const res = await fetch(`${API_BASE}/users/${telegramId}/withdraw/request`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        address: withdrawAddress,
+        amount_usdt: Number(withdrawAmount),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Withdraw başarısız");
+    }
+
+    alert("Withdraw talebi gönderildi!");
+
+    setWithdrawAddress("");
+    setWithdrawAmount("");
+
+    await loadProfile(telegramId);
+
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Withdraw hatası");
+  }
+}
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -286,15 +333,23 @@ export default function App() {
       className="invite-input"
       placeholder="Wallet address"
       style={{ marginTop: 12 }}
+      value={withdrawAddress}
+      onChange={(e) => setWithdrawAddress(e.target.value)}
     />
 
     <input
       className="invite-input"
       placeholder="Amount"
       style={{ marginTop: 12 }}
+      value={withdrawAmount}
+      onChange={(e) => setWithdrawAmount(e.target.value)}
     />
 
-    <button className="collect-btn" style={{ marginTop: 12 }}>
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={handleWithdraw}
+    >
       Submit Withdraw
     </button>
 
