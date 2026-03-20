@@ -58,6 +58,20 @@ def init_db():
             )
         """))
 
+                conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS deposit_orders (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                telegram_id TEXT NOT NULL,
+                expected_amount DOUBLE PRECISION NOT NULL,
+                credited_amount DOUBLE PRECISION,
+                status TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                paid_txid TEXT
+            )
+        """))
+                
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS withdraw_requests (
                 id SERIAL PRIMARY KEY,

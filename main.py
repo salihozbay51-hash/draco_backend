@@ -1143,7 +1143,63 @@ class WithdrawRequestResponse(BaseModel):
 class CreateOrderRequest(BaseModel):
     telegram_id: str
     dragon_code: str
-    
+
+class CreateDepositOrderRequest(BaseModel):
+    telegram_id: str
+    amount_usdt: float = Field(..., gt=0)
+@app.post("/wallet/deposit/orders")
+def create_deposit_order(req: CreateDepositOrderRequest):
+    telegram_id = req.telegram_id.strip()
+    amount_usdt = round(float(req.amount_usdt), 2)
+
+    if amount_usdt < 1:
+        raise HTTPException(status_code=400, detail="Minimum yükleme 1 USDT")
+
+    deposit_address = os.getenv("TRON_DEPOSIT_ADDRESS", "").strip()
+    if not deposit_address:
+        raise HTTPException(status_code=500, detail="TRON_DEPOSIT_ADDRESS ayarlı değil")
+
+    with engine.begin() as conn:
+        user = _get_user_by_telegram(conn, telegram_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+        unique_cents = randint(1, 99) / 100
+        expected_amount = round(amount_usdt + unique_cents, 2)
+
+        now = utcnow()
+        expires_at = (now + timedelta(minutes=30)).isoformat()
+        created_at = now.isoformat()
+
+        cur = conn.execute(
+            text("""
+                INSERT INTO deposit_orders
+                    (user_id, telegram_id, expected_amount, credited_amount, status, expires_at, created_at, paid_txid)
+                VALUES
+                    (:uid, :tg, :expected_amount, :credited_amount, 'awaiting_payment', :expires_at, :created_at, NULL)
+                RETURNING id
+            """),
+            {
+                "uid": int(user["id"]),
+                "tg": user["telegram_id"],
+                "expected_amount": float(expected_amount),
+                "credited_amount": float(amount_usdt),
+                "expires_at": expires_at,
+                "created_at": created_at,
+            },
+        )
+        order_id = int(cur.mappings().fetchone()["id"])
+
+    return {
+        "order_id": order_id,
+        "pay_to": deposit_address,
+        "expected_amount_usdt": expected_amount,
+        "credited_amount_usdt": amount_usdt,
+        "network": "TRON (TRC-20)",
+        "expires_at": expires_at,
+        "note": "Lütfen tutarı aynen gönderin. Benzersiz küsurat ödeme eşleştirme içindir."
+    }
+
 @app.post("/users/{telegram_id}/withdraw/request", response_model=WithdrawRequestResponse)
 def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
     telegram_id = telegram_id.strip()
