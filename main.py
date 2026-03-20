@@ -1655,7 +1655,7 @@ def _watcher_loop():
                 # 3) Eşleşen ödemeleri işle
                 matched = 0
                 for tx in txs:
-                    if _process_tx_if_matches(conn, tx):
+                    if _process_tx_if_matches(tx):
                         matched += 1
 
                 if matched:

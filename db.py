@@ -58,7 +58,7 @@ def init_db():
             )
         """))
 
-                conn.execute(text("""
+        conn.execute(text("""
             CREATE TABLE IF NOT EXISTS deposit_orders (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
