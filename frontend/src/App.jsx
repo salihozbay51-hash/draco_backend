@@ -29,14 +29,18 @@ export default function App() {
   const [withdrawHistory, setWithdrawHistory] = useState([]);
 
   async function ensureRegistered(id) {
-    await fetch(`${API_BASE}/users/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ telegram_id: id }),
-    });
+  const res = await fetch(`${API_BASE}/users/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ telegram_id: id }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Kayıt işlemi başarısız (${res.status})`);
   }
+}
 
   async function loadProfile(id) {
     try {
@@ -60,64 +64,70 @@ export default function App() {
   }
 
   async function loadReferrals(id) {
-  try {
-    const res = await fetch(`${API_BASE}/users/${id}/referrals`);
-    if (!res.ok) {
-      throw new Error(`Referral bilgisi alınamadı (${res.status})`);
-    }
+    try {
+      const res = await fetch(`${API_BASE}/users/${id}/referrals`);
+      if (!res.ok) {
+        throw new Error(`Referral bilgisi alınamadı (${res.status})`);
+      }
 
-    const data = await res.json();
-    setRefs(data);
-  } catch (err) {
-    console.error("Referral fetch error:", err);
+      const data = await res.json();
+      setRefs(data);
+    } catch (err) {
+      console.error("Referral fetch error:", err);
+    }
   }
-}
 
   async function loadMarket() {
-  try {
-    const res = await fetch(`${API_BASE}/market/dragons`);
-    if (!res.ok) {
-      throw new Error("Market yüklenemedi");
+    try {
+      const res = await fetch(`${API_BASE}/market/dragons`);
+      if (!res.ok) {
+        throw new Error("Market yüklenemedi");
+      }
+
+      const data = await res.json();
+
+      // Minik starter-only olduğu için markette gösterme
+      const filtered = (data.dragons || []).filter((d) => !d.is_starter_only);
+      setMarketDragons(filtered);
+    } catch (err) {
+      console.error("Market fetch error:", err);
     }
-
-    const data = await res.json();
-
-    // Minik starter-only olduğu için markette gösterme
-    const filtered = (data.dragons || []).filter((d) => !d.is_starter_only);
-    setMarketDragons(filtered);
-  } catch (err) {
-    console.error("Market fetch error:", err);
   }
-}
 
   async function loadWithdrawHistory(id) {
-  try {
-    const res = await fetch(`${API_BASE}/users/${id}/withdraws`);
-    if (!res.ok) {
-      throw new Error(`Withdraw history alınamadı (${res.status})`);
+    try {
+      const res = await fetch(`${API_BASE}/users/${id}/withdraws`);
+      if (!res.ok) {
+        throw new Error(`Withdraw history alınamadı (${res.status})`);
+      }
+
+      const data = await res.json();
+      setWithdrawHistory(data.items || []);
+    } catch (err) {
+      console.error("Withdraw history fetch error:", err);
     }
-
-    const data = await res.json();
-    setWithdrawHistory(data.items || []);
-  } catch (err) {
-    console.error("Withdraw history fetch error:", err);
   }
-}
 
-  async function buyDragon(code) {
+ async function buyDragon(code) {
   try {
     const res = await fetch(`${API_BASE}/users/${telegramId}/buy/${code}`, {
       method: "POST",
     });
 
-    const data = await res.json();
+    let data = null;
+
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
 
     if (!res.ok) {
-      alert(data.detail || "Yetersiz bakiye veya satın alma başarısız");
+      alert(data?.detail || "Yetersiz bakiye veya satın alma başarısız");
       return;
     }
 
-    alert(`${prettyCode(data.dragon_code)} başarıyla satın alındı!`);
+    alert(`${prettyCode(data?.dragon_code || code)} başarıyla satın alındı!`);
     await loadProfile(telegramId);
     await loadReferrals(telegramId);
     setPage("home");
@@ -152,20 +162,32 @@ export default function App() {
   }
 
   async function handleWithdraw() {
-    if (!telegramId) return;
+  if (!telegramId) return;
 
-    try {
-      setError("");
+  try {
+    setError("");
 
-      if (!withdrawAddress || !withdrawAmount) {
-        setError("Cüzdan adresi ve miktar zorunlu");
-        return;
-      }
+    const amount = Number(withdrawAmount);
 
-      if (Number(withdrawAmount) < 5) {
-        setError("Minimum çekim 5 USDT");
-        return;
-      }
+    if (!withdrawAddress.trim()) {
+      setError("Cüzdan adresi zorunlu");
+      return;
+    }
+
+    if (!withdrawAmount.trim()) {
+      setError("Miktar zorunlu");
+      return;
+    }
+
+    if (!Number.isFinite(amount)) {
+      setError("Geçerli bir miktar gir");
+      return;
+    }
+
+    if (amount < 5) {
+      setError("Minimum çekim 5 USDT");
+      return;
+    }
 
     const res = await fetch(`${API_BASE}/users/${telegramId}/withdraw/request`, {
       method: "POST",
@@ -174,17 +196,22 @@ export default function App() {
       },
       body: JSON.stringify({
         address: withdrawAddress,
-        amount_usdt: Number(withdrawAmount),
+        amount_usdt: amount,
       }),
     });
 
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
 
     if (!res.ok) {
       throw new Error(
-        typeof data.detail === "string"
-          ? data.detail 
-          : JSON.stringify(data.detail) 
+        typeof data?.detail === "string"
+          ? data.detail
+          : "Withdraw hatası"
       );
     }
 
@@ -195,7 +222,6 @@ export default function App() {
 
     await loadProfile(telegramId);
     await loadWithdrawHistory(telegramId);
-
   } catch (err) {
     setError(err instanceof Error ? err.message : "Withdraw hatası");
   }
@@ -218,12 +244,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-  if (!telegramId) return;
-  loadProfile(telegramId);
-  loadReferrals(telegramId);
-  loadMarket();
-  loadWithdrawHistory(telegramId);
-}, [telegramId]);
+    if (!telegramId) return;
+    loadProfile(telegramId);
+    loadReferrals(telegramId);
+    loadMarket();
+    loadWithdrawHistory(telegramId);
+  }, [telegramId]);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
 
@@ -235,62 +261,62 @@ export default function App() {
     <div className="app-shell">
       <div className="container">
         <div className="card hero-card">
-          <div className="hero-top">
-            <div>
-            </div>
-              <p className="muted">🐉 Draco Kingdom</p>
-              <h1>{playerName}</h1>
-              <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
-            </div>
+  <div className="hero-top">
+    <div>
+      <p className="muted">🐉 Draco Kingdom</p>
+      <h1>{playerName}</h1>
+      <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
+    </div>
+  </div>
+
+  <div className="stat-badge">
+    <span className="tiny">Active Dragons</span>
+    <strong>{activeCount}</strong>
+  </div>
+</div>
+
+      {loading ? (
+        <div className="status-box">Profil yükleniyor...</div>
+      ) : error ? (
+        <div className="status-box error-box">{error}</div>
+      ) : (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <p className="muted">🥚 Eggs</p>
+              <h2>{profile?.total_eggs_ay ?? 0}</h2>
+              <p className="tiny">Stored: {profile?.stored_eggs_ay ?? 0}</p>
             </div>
 
-            <div className="stat-badge">
-              <span className="tiny">Active Dragons</span>
-              <strong>{activeCount}</strong>
+            <div className="stat-card">
+              <p className="muted">💰 USDT</p>
+              <h2>{profile?.usdt_balance ?? 0}</h2>
+              <p className="tiny">Pending eggs: {profile?.pending_eggs_ay ?? 0}</p>
             </div>
           </div>
 
-          {loading ? (
-            <div className="status-box">Profil yükleniyor...</div>
-          ) : error ? (
-            <div className="status-box error-box">{error}</div>
-          ) : (
-            <>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <p className="muted">🥚 Eggs</p>
-                  <h2>{profile?.total_eggs_ay ?? 0}</h2>
-                  <p className="tiny">Stored: {profile?.stored_eggs_ay ?? 0}</p>
-                </div>
+          <button
+            className="collect-btn"
+            onClick={handleCollect}
+            disabled={collecting}
+          >
+            {collecting ? "Collecting..." : "Collect Eggs"}
+          </button>
 
-                <div className="stat-card">
-                  <p className="muted">💰 USDT</p>
-                  <h2>{profile?.usdt_balance ?? 0}</h2>
-                  <p className="tiny">Pending eggs: {profile?.pending_eggs_ay ?? 0}</p>
-                </div>
-              </div>
+          <p className="tiny last-collect">
+            Last collect: {formatDate(profile?.last_collect_at ?? null)}
+          </p>
+        </>
+      )}
 
-              <button
-                className="collect-btn"
-                onClick={handleCollect}
-                disabled={collecting}
-              >
-                {collecting ? "Collecting..." : "Collect Eggs"}
-              </button>
+      {page === "home" && (
+        <>
+          <div className="dragon-chamber">
+            <div className="chamber-title">🔥 Dragon Chamber</div>
 
-              <p className="tiny last-collect">
-                Last collect: {formatDate(profile?.last_collect_at ?? null)}
-              </p>
-            </>
-          )}
-
-        {page === "home" && (
-          <>
-            <div className="dragon-chamber">
-              <div className="chamber-title">🔥 Dragon Chamber</div>
-
-              <div className="dragon-grid">
-                {profile?.dragons?.map((dragon) => (
+            <div className="dragon-grid">
+              {profile?.dragons?.length ? (
+                profile.dragons.map((dragon) => (
                   <div key={dragon.id} className="dragon-card">
                     <strong>🐉 {prettyCode(dragon.dragon_code)}</strong>
 
@@ -303,46 +329,49 @@ export default function App() {
                     <div className="tiny">
                       ⏳ {dragon.remaining_days} days left
                     </div>
-                  </div>
-                ))}
+                   </div>
+                 ))
+               ) : (
+                 <div className="tiny">Henüz dragonun yok 🐣</div>
+               )}
+             </div>
+          </div>
+        </>
+      )}
+
+      {page === "market" && (
+        <div className="dragon-chamber">
+          <div className="chamber-title">🏪 Draco Market</div>
+
+          <div className="dragon-grid">
+            {marketDragons.map((dragon) => (
+              <div key={dragon.code} className="dragon-card">
+                <strong>🐉 {prettyCode(dragon.code)}</strong>
+                <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
+                <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
+                <div className="tiny">⏳ {dragon.lifetime_days} days</div>
+
+                <button
+                  className="collect-main"
+                  onClick={() => buyDragon(dragon.code)}
+                >
+                  Buy
+                </button>
               </div>
-            </div>
-          </>
-        )}
-
-        {page === "market" && (
-  <div className="dragon-chamber">
-    <div className="chamber-title">🏪 Draco Market</div>
-
-    <div className="dragon-grid">
-      {marketDragons.map((dragon) => (
-        <div key={dragon.code} className="dragon-card">
-          <strong>🐉 {prettyCode(dragon.code)}</strong>
-          <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
-          <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
-          <div className="tiny">⏳ {dragon.lifetime_days} days</div>
+            ))}
+          </div>
 
           <button
-            className="collect-main"
-            onClick={() => buyDragon(dragon.code)}
+            className="collect-btn"
+            style={{ marginTop: 16 }}
+            onClick={() => setPage("home")}
           >
-            Buy
+            Back to Home
           </button>
         </div>
-      ))}
-    </div>
+      )}
 
-    <button
-      className="collect-btn"
-      style={{ marginTop: 16 }}
-      onClick={() => setPage("home")}
-    >
-      Back to Home
-    </button>
-  </div>
-)}
-
-    {page === "withdraw" && (
+      {page === "withdraw" && (
   <div className="dragon-chamber">
     <div className="chamber-title">💸 Withdraw</div>
 
@@ -382,95 +411,101 @@ export default function App() {
     >
       Back to Home
     </button>
-    <div style={{ marginTop: 20 }}>
-      <div className="chamber-title">📜TEST HISTORY</div>
 
-  {withdrawHistory.length === 0 ? (
-    <div className="tiny">Henüz çekim talebi yok</div>
-  ) : (
-    withdrawHistory.map((w) => (
-      <div key={w.id} className="dragon-card" style={{ marginTop: 10 }}>
-        <div><strong>{w.amount_net_usdt} USDT</strong></div>
-        <div className="tiny">Fee: {w.fee_usdt} USDT</div>
-        <div className="tiny">Total Debit: {w.amount_gross_usdt} USDT</div>
-        <div className="tiny">Status: {w.status}</div>
-        <div className="tiny">Address: {w.address}</div>
-        <div className="tiny">
-          Date: {new Date(w.created_at).toLocaleString()}
-        </div>
-        {w.note && (
-          <div className="tiny">Note: {w.note}</div>
-        )}
-      </div>
-    ))
-  )}
+    <div style={{ marginTop: 20 }}>
+      <div className="chamber-title">📜 TEST HISTORY</div>
+
+      {withdrawHistory.length === 0 ? (
+        <div className="tiny">Henüz çekim talebi yok</div>
+      ) : (
+        withdrawHistory.map((w) => (
+          <div key={w.id} className="dragon-card" style={{ marginTop: 10 }}>
+            <div><strong>{w.amount_net_usdt} USDT</strong></div>
+            <div className="tiny">Fee: {w.fee_usdt} USDT</div>
+            <div className="tiny">Total Debit: {w.amount_gross_usdt} USDT</div>
+            <div className="tiny">Status: {w.status}</div>
+            <div className="tiny">Address: {w.address}</div>
+            <div className="tiny">
+              Date: {new Date(w.created_at).toLocaleString()}
+            </div>
+            {w.note && <div className="tiny">Note: {w.note}</div>}
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+
+<div className="bottom-grid">
+  <button className="nav-card" onClick={() => setPage("market")}>
+    <span className="nav-title">🏪 Market</span>
+    <span className="muted">Buy new dragons</span>
+  </button>
+
+  <button className="nav-card" onClick={() => setPage("withdraw")}>
+    <span className="nav-title">💸 Withdraw</span>
+    <span className="muted">Cash out USDT</span>
+  </button>
 </div>
 
-        <div className="bottom-grid">
-          <button className="nav-card" onClick={() => setPage("market")}>
-            <span className="nav-title">🏪 Market</span>
-            <span className="muted">Buy new dragons</span>
-          </button>
+<div className="card">
+  <div className="section-head">
+    <h3>Invite Friends</h3>
+    <span className="muted">Referral System</span>
+  </div>
 
-          <button className="nav-card" onClick={() => setPage("withdraw")}>
-            <span className="nav-title">💸 Withdraw</span>
-            <span className="muted">Cash out USDT</span>
-          </button>
-        </div>
+  <div className="dragon-item">
+    <p className="muted" style={{ marginBottom: 8 }}>
+      Your invite link
+    </p>
 
-        <div className="card">
-          <div className="section-head">
-            <h3>Invite Friends</h3>
-            <span className="muted">Referral System</span>
-          </div>
+    <input value={inviteLink} readOnly className="invite-input" />
 
-          <div className="dragon-item">
-            <p className="muted" style={{ marginBottom: 8 }}>
-              Your invite link
-            </p>
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={async () => {
+        try {
+          if (inviteLink) {
+            await navigator.clipboard.writeText(inviteLink);
+            alert("Link kopyalandı!");
+          }
+        } catch (e) {
+          alert("Kopyalama başarısız");
+        }
+      }}
+     >
+      Copy Link
+      </button>
+  </div>
+</div>
 
-            <input value={inviteLink} readOnly className="invite-input" />
+{refs && (
+  <div className="card">
+    <div className="section-head">
+      <h3>Referrals</h3>
+      <span className="muted">3 Levels</span>
+    </div>
 
-            <button
-              className="collect-btn"
-              style={{ marginTop: 12 }}
-              onClick={() => {
-                if (inviteLink) {
-                  navigator.clipboard.writeText(inviteLink);
-                }
-              }}
-            >
-              Copy Link
-            </button>
-          </div>
-        </div>
+    <div className="stats-grid">
+      <div className="stat-card">
+        <p className="muted">Level 1</p>
+        <h2>{refs.level1}</h2>
+      </div>
 
-        {refs && (
-          <div className="card">
-            <div className="section-head">
-              <h3>Referrals</h3>
-              <span className="muted">3 Levels</span>
-            </div>
+      <div className="stat-card">
+        <p className="muted">Level 2</p>
+        <h2>{refs.level2}</h2>
+      </div>
 
-            <div className="stats-grid">
-              <div className="stat-card">
-                <p className="muted">Level 1</p>
-                <h2>{refs.level1}</h2>
-              </div>
-
-              <div className="stat-card">
-                <p className="muted">Level 2</p>
-                <h2>{refs.level2}</h2>
-              </div>
-
-              <div className="stat-card">
-                <p className="muted">Level 3</p>
-                <h2>{refs.level3}</h2>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="stat-card">
+        <p className="muted">Level 3</p>
+        <h2>{refs.level3}</h2>
       </div>
     </div>
-  );
+  </div>
+)}
+    </div>
+  </div>
+);
 }
