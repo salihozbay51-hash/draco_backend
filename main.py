@@ -1200,6 +1200,31 @@ def create_deposit_order(req: CreateDepositOrderRequest):
         "note": "Lütfen tutarı aynen gönderin. Benzersiz küsurat ödeme eşleştirme içindir."
     }
 
+@app.get("/wallet/deposit/orders/{order_id}")
+def get_deposit_order(order_id: int):
+    with engine.begin() as conn:
+        cur = conn.execute(
+            text("""
+                SELECT
+                    id,
+                    telegram_id,
+                    expected_amount,
+                    credited_amount,
+                    status,
+                    expires_at,
+                    paid_txid
+                FROM deposit_orders
+                WHERE id = :oid
+            """),
+            {"oid": int(order_id)},
+        )
+        row = cur.mappings().fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Deposit order bulunamadı")
+
+        return dict(row)
+    
 @app.post("/users/{telegram_id}/withdraw/request", response_model=WithdrawRequestResponse)
 def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
     telegram_id = telegram_id.strip()
