@@ -31,6 +31,7 @@ export default function App() {
   const [depositOrder, setDepositOrder] = useState(null);
   const [depositChecking, setDepositChecking] = useState(false);
   const [depositCreating, setDepositCreating] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   async function ensureRegistered(id) {
   const res = await fetch(`${API_BASE}/users/register`, {
@@ -164,6 +165,43 @@ export default function App() {
       setCollecting(false);
     }
   }
+  
+  async function handleConvert() {
+  if (!telegramId) return;
+
+  try {
+    setError("");
+    setConverting(true);
+
+    const res = await fetch(`${API_BASE}/users/${telegramId}/convert`, {
+      method: "POST",
+    });
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        typeof data?.detail === "string"
+          ? data.detail
+          : "Convert hatası"
+      );
+    }
+
+    alert(`Converted: +${data.converted_usdt} USDT`);
+
+    await loadProfile(telegramId);
+    await loadReferrals(telegramId);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Convert hatası");
+  } finally {
+    setConverting(false);
+  }
+}
 
   async function handleWithdraw() {
   if (!telegramId) return;
@@ -413,6 +451,19 @@ function resetDepositForm() {
             {collecting ? "Collecting..." : "Collect Eggs"}
           </button>
 
+          <button
+            className="collect-btn"
+            style={{ marginTop: 10, background: "#facc15", color: "#422006" }}
+            onClick={handleConvert}
+            disabled={converting}
+          >
+            {converting ? "Converting..." : "Convert Eggs → USDT"}
+          </button>
+
+          <p className="tiny" style={{ marginTop: 8 }}>
+            500 eggs = 1 USDT
+          </p>
+          
           <p className="tiny last-collect">
             Last collect: {formatDate(profile?.last_collect_at ?? null)}
           </p>
