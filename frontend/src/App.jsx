@@ -444,6 +444,39 @@ function resetDepositForm() {
           </div>
         </>
       )}
+
+      {page === "market" && (
+        <div className="dragon-chamber">
+          <div className="chamber-title">🏪 Draco Market</div>
+
+          <div className="dragon-grid">
+            {marketDragons.map((dragon) => (
+              <div key={dragon.code} className="dragon-card">
+                <strong>🐉 {prettyCode(dragon.code)}</strong>
+                <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
+                <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
+                <div className="tiny">⏳ {dragon.lifetime_days} days</div>
+
+                <button
+                  className="collect-main"
+                  onClick={() => buyDragon(dragon.code)}
+                >
+                  Buy
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="collect-btn"
+            style={{ marginTop: 16 }}
+            onClick={() => setPage("home")}
+          >
+            Back to Home
+          </button>
+        </div>
+      )}
+
       {page === "deposit" && (
   <div className="dragon-chamber">
     <div className="chamber-title">➕ Deposit USDT</div>
@@ -551,37 +584,6 @@ function resetDepositForm() {
     </button>
   </div>
 )}
-      {page === "market" && (
-        <div className="dragon-chamber">
-          <div className="chamber-title">🏪 Draco Market</div>
-
-          <div className="dragon-grid">
-            {marketDragons.map((dragon) => (
-              <div key={dragon.code} className="dragon-card">
-                <strong>🐉 {prettyCode(dragon.code)}</strong>
-                <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
-                <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
-                <div className="tiny">⏳ {dragon.lifetime_days} days</div>
-
-                <button
-                  className="collect-main"
-                  onClick={() => buyDragon(dragon.code)}
-                >
-                  Buy
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <button
-            className="collect-btn"
-            style={{ marginTop: 16 }}
-            onClick={() => setPage("home")}
-          >
-            Back to Home
-          </button>
-        </div>
-      )}
 
       {page === "withdraw" && (
   <div className="dragon-chamber">
