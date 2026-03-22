@@ -315,7 +315,70 @@ def _process_tx_if_matches(tx: dict) -> bool:
             _pay_referral_bonus(conn, int(order["user_id"]), purchase_usdt)
 
         return True
+def _process_deposit_tx_if_matches(tx: dict) -> bool:
+    txid = tx.get("transaction_id") or tx.get("transactionId") or tx.get("hash")
+    if not txid:
+        return False
 
+    amount = _as_decimal_amount(tx)
+    amount_2 = float(round(float(amount) + 1e-9, 2))
+    now_iso = utcnow().isoformat()
+
+    with engine.begin() as conn:
+        # idempotency
+        ins = conn.execute(
+            text("""
+                INSERT INTO processed_txs (txid, processed_at)
+                VALUES (:txid, :ts)
+                ON CONFLICT (txid) DO NOTHING
+            """),
+            {"txid": txid, "ts": now_iso},
+        )
+        if ins.rowcount == 0:
+            return False
+
+        # deposit order'ı paid yap
+        cur = conn.execute(
+            text("""
+                UPDATE deposit_orders
+                SET status = 'paid', paid_txid = :txid
+                WHERE id = (
+                    SELECT id
+                    FROM deposit_orders
+                    WHERE status = 'awaiting_payment'
+                      AND expires_at > :now
+                      AND expected_amount = :amt
+                    ORDER BY id ASC
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING id, user_id, telegram_id, credited_amount
+            """),
+            {"txid": txid, "now": now_iso, "amt": amount_2},
+        )
+        order = cur.mappings().fetchone()
+
+        if not order:
+            conn.execute(
+                text("DELETE FROM processed_txs WHERE txid = :txid"),
+                {"txid": txid},
+            )
+            return False
+
+        credited_amount = float(order["credited_amount"] or 0)
+
+        if credited_amount > 0:
+            conn.execute(
+                text("""
+                    UPDATE users
+                    SET usdt_balance = usdt_balance + :amount
+                    WHERE id = :uid
+                """),
+                {"amount": credited_amount, "uid": int(order["user_id"])},
+            )
+
+        return True
+    
 def _grant_dragon(conn, user_id: int, dragon_code: str):
     dragon_code = dragon_code.strip().lower()
 
@@ -1202,6 +1265,8 @@ def create_deposit_order(req: CreateDepositOrderRequest):
 
 @app.get("/wallet/deposit/orders/{order_id}")
 def get_deposit_order(order_id: int):
+    deposit_address = os.getenv("TRON_DEPOSIT_ADDRESS", "").strip()
+
     with engine.begin() as conn:
         cur = conn.execute(
             text("""
@@ -1223,7 +1288,17 @@ def get_deposit_order(order_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Deposit order bulunamadı")
 
-        return dict(row)
+        return {
+            "id": row["id"],
+            "telegram_id": row["telegram_id"],
+            "pay_to": deposit_address,
+            "expected_amount_usdt": row["expected_amount"],
+            "credited_amount_usdt": row["credited_amount"],
+            "status": row["status"],
+            "expires_at": row["expires_at"],
+            "paid_txid": row["paid_txid"],
+            "network": "TRON (TRC-20)",
+        }
     
 @app.post("/users/{telegram_id}/withdraw/request", response_model=WithdrawRequestResponse)
 def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
@@ -1640,6 +1715,18 @@ def _expire_old_orders(conn) -> int:
         {"now": now_iso},
     )
     return cur.rowcount
+def _expire_old_deposit_orders(conn) -> int:
+    now_iso = utcnow().isoformat()
+    cur = conn.execute(
+        text("""
+            UPDATE deposit_orders
+            SET status = 'expired'
+            WHERE status = 'awaiting_payment'
+              AND expires_at <= :now
+        """),
+        {"now": now_iso},
+    )
+    return cur.rowcount
 
 def _watcher_loop():
     interval = int(os.getenv("WATCHER_INTERVAL_SECONDS", "20") or "20")
@@ -1649,13 +1736,12 @@ def _watcher_loop():
     if not deposit_address:
         print("[WATCHER] TRON_DEPOSIT_ADDRESS yok. Watcher durduruldu.")
         return
-    
-        # --- DB hazır mı? (purchase_orders tablosu oluşana kadar bekle) ---
+
     import time
     while True:
         try:
             conn = get_conn()
-            conn.execute("SELECT 1 FROM purchase_orders LIMIT 1")
+            conn.execute(text("SELECT 1 FROM purchase_orders LIMIT 1"))
             conn.close()
             print("[WATCHER] DB hazır, watcher devam ediyor ✅")
             break
@@ -1667,24 +1753,35 @@ def _watcher_loop():
         try:
             conn = get_conn()
             try:
-                # 1) Önce süresi geçen order'ları temizle
-                expired = _expire_old_orders(conn)
-                if expired:
-                    print(f"[WATCHER] {expired} sipariş süresi doldu (expired).")
+                expired_purchase = _expire_old_orders(conn)
+                if expired_purchase:
+                    print(f"[WATCHER] {expired_purchase} purchase order expired.")
+
+                expired_deposit = _expire_old_deposit_orders(conn)
+                if expired_deposit:
+                    print(f"[WATCHER] {expired_deposit} deposit order expired.")
 
                 conn.commit()
 
-                # 2) TronGrid'den transferleri çek
                 txs = _fetch_incoming_usdt_trc20(deposit_address)
 
-                # 3) Eşleşen ödemeleri işle
-                matched = 0
+                matched_purchase = 0
+                matched_deposit = 0
+
                 for tx in txs:
                     if _process_tx_if_matches(tx):
-                        matched += 1
+                        matched_purchase += 1
+                        continue
 
-                if matched:
-                    print(f"[WATCHER] {matched} ödeme işlendi ✅")
+                    if _process_deposit_tx_if_matches(tx):
+                        matched_deposit += 1
+                        continue
+
+                if matched_purchase:
+                    print(f"[WATCHER] {matched_purchase} purchase payment işlendi ✅")
+
+                if matched_deposit:
+                    print(f"[WATCHER] {matched_deposit} deposit payment işlendi ✅")
 
                 conn.commit()
 
@@ -1695,8 +1792,7 @@ def _watcher_loop():
             print("[WATCHER] HATA:", e)
 
         time.sleep(interval)
-
-
+                
 @app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade", response_model=UpgradeResponse)
 def upgrade_dragon(telegram_id: str, dragon_id: int):
     telegram_id = telegram_id.strip()

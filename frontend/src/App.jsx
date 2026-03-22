@@ -27,6 +27,10 @@ export default function App() {
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawHistory, setWithdrawHistory] = useState([]);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositOrder, setDepositOrder] = useState(null);
+  const [depositChecking, setDepositChecking] = useState(false);
+  const [depositCreating, setDepositCreating] = useState(false);
 
   async function ensureRegistered(id) {
   const res = await fetch(`${API_BASE}/users/register`, {
@@ -215,6 +219,97 @@ export default function App() {
       );
     }
 
+  async function createDepositOrder() {
+  if (!telegramId) return;
+
+  try {
+    setError("");
+    setDepositCreating(true);
+
+    const amount = Number(depositAmount);
+
+    if (!depositAmount.trim()) {
+      setError("Yükleme miktarı zorunlu");
+      return;
+    }
+
+    if (!Number.isFinite(amount)) {
+      setError("Geçerli bir yükleme miktarı gir");
+      return;
+    }
+
+    if (amount < 1) {
+      setError("Minimum yükleme 1 USDT");
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/wallet/deposit/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        telegram_id: telegramId,
+        amount_usdt: amount,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        typeof data?.detail === "string" ? data.detail : "Deposit order oluşturulamadı"
+      );
+    }
+
+    setDepositOrder(data);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Deposit oluşturma hatası");
+  } finally {
+    setDepositCreating(false);
+  }
+}
+
+async function refreshDepositStatus() {
+  if (!depositOrder?.order_id) return;
+
+  try {
+    setDepositChecking(true);
+    setError("");
+
+    const res = await fetch(
+      `${API_BASE}/wallet/deposit/orders/${depositOrder.order_id}`
+    );
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        typeof data?.detail === "string" ? data.detail : "Deposit durumu alınamadı"
+      );
+    }
+
+    setDepositOrder((prev) => ({
+      ...(prev || {}),
+      ...data,
+      order_id: prev?.order_id ?? data.id,
+    }));
+
+    if (data.status === "paid") {
+      await loadProfile(telegramId);
+      alert("Ödeme alındı, bakiyen güncellendi!");
+    }
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Deposit status hatası");
+  } finally {
+    setDepositChecking(false);
+  }
+}
+
+function resetDepositForm() {
+  setDepositAmount("");
+  setDepositOrder(null);
+}
+
     alert("Withdraw talebi gönderildi!");
 
     setWithdrawAddress("");
@@ -250,6 +345,17 @@ export default function App() {
     loadMarket();
     loadWithdrawHistory(telegramId);
   }, [telegramId]);
+
+  useEffect(() => {
+  if (!depositOrder?.order_id) return;
+  if (depositOrder?.status === "paid" || depositOrder?.status === "expired") return;
+
+  const interval = setInterval(() => {
+    refreshDepositStatus();
+  }, 10000);
+
+  return () => clearInterval(interval);
+}, [depositOrder?.order_id, depositOrder?.status]);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
 
@@ -338,7 +444,113 @@ export default function App() {
           </div>
         </>
       )}
+      {page === "deposit" && (
+  <div className="dragon-chamber">
+    <div className="chamber-title">➕ Deposit USDT</div>
 
+    <div className="dragon-card">
+      <div className="tiny">Current balance</div>
+      <strong>{profile?.usdt_balance ?? 0} USDT</strong>
+    </div>
+
+    {!depositOrder && (
+      <>
+        <input
+          className="invite-input"
+          placeholder="Amount (min 1 USDT)"
+          style={{ marginTop: 12 }}
+          value={depositAmount}
+          onChange={(e) => setDepositAmount(e.target.value)}
+        />
+
+        <button
+          className="collect-btn"
+          style={{ marginTop: 12 }}
+          onClick={createDepositOrder}
+          disabled={depositCreating}
+        >
+          {depositCreating ? "Creating..." : "Create Deposit Order"}
+        </button>
+      </>
+    )}
+
+    {depositOrder && (
+      <div className="dragon-card" style={{ marginTop: 12 }}>
+        <div className="tiny">Network</div>
+        <strong>{depositOrder.network || "TRON (TRC-20)"}</strong>
+
+        <div className="tiny" style={{ marginTop: 10 }}>Send to address</div>
+        <input
+          className="invite-input"
+          readOnly
+          value={depositOrder.pay_to || ""}
+          style={{ marginTop: 6 }}
+        />
+
+        <button
+          className="collect-btn"
+          style={{ marginTop: 10 }}
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(depositOrder.pay_to || "");
+              alert("Adres kopyalandı!");
+            } catch {
+              alert("Adres kopyalanamadı");
+            }
+          }}
+        >
+          Copy Address
+        </button>
+
+        <div className="tiny" style={{ marginTop: 14 }}>Expected payment</div>
+        <strong>{depositOrder.expected_amount_usdt} USDT</strong>
+
+        <div className="tiny" style={{ marginTop: 10 }}>Credited amount</div>
+        <strong>{depositOrder.credited_amount_usdt} USDT</strong>
+
+        <div className="tiny" style={{ marginTop: 10 }}>Status</div>
+        <strong>{depositOrder.status}</strong>
+
+        <div className="tiny" style={{ marginTop: 10 }}>
+          Expires: {depositOrder.expires_at ? new Date(depositOrder.expires_at).toLocaleString() : "-"}
+        </div>
+
+        {depositOrder.paid_txid && (
+          <div className="tiny" style={{ marginTop: 10 }}>
+            TXID: {depositOrder.paid_txid}
+          </div>
+        )}
+
+        <button
+          className="collect-btn"
+          style={{ marginTop: 12 }}
+          onClick={refreshDepositStatus}
+          disabled={depositChecking}
+        >
+          {depositChecking ? "Checking..." : "Check Payment Status"}
+        </button>
+
+        {(depositOrder.status === "paid" || depositOrder.status === "expired") && (
+          <button
+            className="collect-btn"
+            style={{ marginTop: 12 }}
+            onClick={resetDepositForm}
+          >
+            New Deposit
+          </button>
+        )}
+      </div>
+    )}
+
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={() => setPage("home")}
+    >
+      Back to Home
+    </button>
+  </div>
+)}
       {page === "market" && (
         <div className="dragon-chamber">
           <div className="chamber-title">🏪 Draco Market</div>
@@ -440,6 +652,11 @@ export default function App() {
   <button className="nav-card" onClick={() => setPage("market")}>
     <span className="nav-title">🏪 Market</span>
     <span className="muted">Buy new dragons</span>
+  </button>
+
+  <button className="nav-card" onClick={() => setPage("deposit")}>
+    <span className="nav-title">➕ Deposit</span>
+    <span className="muted">Load USDT</span>
   </button>
 
   <button className="nav-card" onClick={() => setPage("withdraw")}>
