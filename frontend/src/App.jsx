@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
 
@@ -33,8 +33,17 @@ export default function App() {
   const [depositCreating, setDepositCreating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [tgInitData, setTgInitData] = useState("");
-
+  const [soundOn, setSoundOn] = useState(true);
+  const bgmRef = useRef(null);
   
+  function playClick() {
+    if (!soundOn) return;
+
+    const audio = new Audio("/sounds/click.mp3");
+    audio.volume = 0.3;
+    audio.play().catch(() => {});
+  }
+
   function getAuthHeaders(extra = {}) {
   return {
     ...extra,
@@ -403,6 +412,20 @@ function resetDepositForm() {
   setTelegramId("1525781970");
   setPlayerName("Dragon Master");
 }, []);
+  
+  useEffect(() => {
+  if (!bgmRef.current) {
+    bgmRef.current = new Audio("/sounds/bgm.mp3");
+    bgmRef.current.loop = true;
+    bgmRef.current.volume = 0.2;
+  }
+
+  if (soundOn) {
+    bgmRef.current.play().catch(() => {});
+  } else {
+    bgmRef.current.pause();
+  }
+}, [soundOn]);
 
   useEffect(() => {
     if (!telegramId) return;
@@ -436,6 +459,16 @@ function resetDepositForm() {
       <div className="container">
         <div className="card hero-card">
   <div className="hero-top">
+    <button
+  className="nav-card"
+  style={{ marginTop: 12 }}
+  onClick={() => {
+  playClick();
+  setSoundOn((prev) => !prev);
+}}
+>
+  {soundOn ? "🔊 Sound On" : "🔇 Sound Off"}
+</button>
     <div>
       <p className="muted">🐉 Draco Kingdom</p>
       <h1>{playerName}</h1>
@@ -471,7 +504,10 @@ function resetDepositForm() {
 
           <button
             className="collect-btn"
-            onClick={handleCollect}
+            onClick={() => {
+              playClick();
+              handleCollect();
+            }}
             disabled={collecting}
           >
             {collecting ? "Collecting..." : "Collect Eggs"}
@@ -480,7 +516,10 @@ function resetDepositForm() {
           <button
             className="collect-btn"
             style={{ marginTop: 10, background: "#facc15", color: "#422006" }}
-            onClick={handleConvert}
+            onClick={() => {
+              playClick();
+              handleConvert();
+            }}
             disabled={converting}
           >
             {converting ? "Converting..." : "Convert Eggs → USDT"}
@@ -540,7 +579,10 @@ function resetDepositForm() {
 
                 <button
                   className="collect-main"
-                  onClick={() => buyDragon(dragon.code)}
+                  onClick={() => {
+                    playClick();
+                    buyDragon(dragon.code);
+                  }}
                 >
                   Buy
                 </button>
@@ -551,7 +593,10 @@ function resetDepositForm() {
           <button
             className="collect-btn"
             style={{ marginTop: 16 }}
-            onClick={() => setPage("home")}
+            onClick={() => {
+              playClick();
+              setPage("home");
+            }}
           >
             Back to Home
           </button>
@@ -580,7 +625,10 @@ function resetDepositForm() {
         <button
           className="collect-btn"
           style={{ marginTop: 12 }}
-          onClick={createDepositOrder}
+          onClick={() => {
+            playClick();
+            createDepositOrder();
+          }}
           disabled={depositCreating}
         >
           {depositCreating ? "Creating..." : "Create Deposit Order"}
@@ -605,6 +653,7 @@ function resetDepositForm() {
           className="collect-btn"
           style={{ marginTop: 10 }}
           onClick={async () => {
+            playClick();
             try {
               await navigator.clipboard.writeText(depositOrder.pay_to || "");
               alert("Adres kopyalandı!");
@@ -638,7 +687,10 @@ function resetDepositForm() {
         <button
           className="collect-btn"
           style={{ marginTop: 12 }}
-          onClick={refreshDepositStatus}
+          onClick={() => {
+            playClick();
+            refreshDepositStatus();
+          }}
           disabled={depositChecking}
         >
           {depositChecking ? "Checking..." : "Check Payment Status"}
@@ -648,7 +700,10 @@ function resetDepositForm() {
           <button
             className="collect-btn"
             style={{ marginTop: 12 }}
-            onClick={resetDepositForm}
+            onClick={() => {
+              playClick();
+              resetDepositForm();
+            }}
           >
             New Deposit
           </button>
@@ -659,7 +714,10 @@ function resetDepositForm() {
     <button
       className="collect-btn"
       style={{ marginTop: 12 }}
-      onClick={() => setPage("home")}
+      onClick={() => {
+        playClick();
+        setPage("home");
+      }}
     >
       Back to Home
     </button>
@@ -694,7 +752,10 @@ function resetDepositForm() {
     <button
       className="collect-btn"
       style={{ marginTop: 12 }}
-      onClick={handleWithdraw}
+      onClick={() => {
+        playClick();
+        handleWithdraw();
+      }}
     >
       Submit Withdraw
     </button>
@@ -702,7 +763,10 @@ function resetDepositForm() {
     <button
       className="collect-btn"
       style={{ marginTop: 12 }}
-      onClick={() => setPage("home")}
+      onClick={() => {
+        playClick();
+        setPage("home");
+      }}
     >
       Back to Home
     </button>
@@ -732,17 +796,26 @@ function resetDepositForm() {
 )}
 
 <div className="bottom-grid">
-  <button className="nav-card" onClick={() => setPage("market")}>
+  <button className="nav-card" onClick={() => {
+                                 playClick();
+                                 setPage("market");
+                               }}>
     <span className="nav-title">🏪 Market</span>
     <span className="muted">Buy new dragons</span>
   </button>
 
-  <button className="nav-card" onClick={() => setPage("deposit")}>
+  <button className="nav-card" onClick={() => {
+                                 playClick();
+                                 setPage("deposit");
+                               }}>
     <span className="nav-title">➕ Deposit</span>
     <span className="muted">Load USDT</span>
   </button>
 
-  <button className="nav-card" onClick={() => setPage("withdraw")}>
+  <button className="nav-card" onClick={() => {
+                                 playClick();
+                                 setPage("withdraw");
+                               }}>
     <span className="nav-title">💸 Withdraw</span>
     <span className="muted">Cash out USDT</span>
   </button>
@@ -765,6 +838,7 @@ function resetDepositForm() {
       className="collect-btn"
       style={{ marginTop: 12 }}
       onClick={async () => {
+        playClick();
         try {
           if (inviteLink) {
             await navigator.clipboard.writeText(inviteLink);
@@ -774,9 +848,9 @@ function resetDepositForm() {
           alert("Kopyalama başarısız");
         }
       }}
-     >
+    >
       Copy Link
-      </button>
+    </button>
   </div>
 </div>
 
