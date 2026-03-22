@@ -6,7 +6,10 @@ import hashlib # <--- Buranın olduğundan ve kaydedildiğinden emin ol
 import threading
 import time
 import requests
+import hmac
+import json
 
+from urllib.parse import parse_qsl
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
@@ -15,7 +18,7 @@ from db import init_db
 from sqlalchemy import text
 from db import engine  # db.py içinde engine var
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi import Depends
 # .evn isimli bir dosya kullanıyorsan ismini buraya yazmalısın
 # Eğer dosya adını .env yaptıysan parantez içini boş bırakabilirsin: load_dotenv()
 load_dotenv() 
@@ -493,11 +496,69 @@ def distribute_xp(total_xp: int, per_dragon_pending: list[tuple[int, int]]) -> d
 
     return xp_map
 
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+
+def verify_telegram_init_data(init_data: str) -> dict:
+    if not init_data:
+        raise HTTPException(status_code=401, detail="Telegram initData gerekli")
+
+    if not BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="TELEGRAM_BOT_TOKEN ayarlı değil")
+
+    pairs = dict(parse_qsl(init_data, keep_blank_values=True))
+    received_hash = pairs.pop("hash", None)
+
+    if not received_hash:
+        raise HTTPException(status_code=401, detail="Telegram hash eksik")
+
+    data_check_string = "\n".join(
+        f"{k}={v}" for k, v in sorted(pairs.items(), key=lambda x: x[0])
+    )
+
+    secret_key = hmac.new(
+        key=b"WebAppData",
+        msg=BOT_TOKEN.encode(),
+        digestmod=hashlib.sha256,
+    ).digest()
+
+    computed_hash = hmac.new(
+        key=secret_key,
+        msg=data_check_string.encode(),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(computed_hash, received_hash):
+        raise HTTPException(status_code=403, detail="Geçersiz Telegram auth")
+
+    user_raw = pairs.get("user")
+    if not user_raw:
+        raise HTTPException(status_code=401, detail="Telegram user verisi yok")
+
+    try:
+        user_data = json.loads(user_raw)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Telegram user verisi bozuk")
+
+    return user_data
+
+def get_current_telegram_user(x_telegram_init_data: str | None = Header(default=None)):
+    user_data = verify_telegram_init_data(x_telegram_init_data or "")
+    telegram_id = str(user_data.get("id") or "").strip()
+
+    if not telegram_id:
+        raise HTTPException(status_code=401, detail="Telegram user id bulunamadı")
+
+    return {
+        "telegram_id": telegram_id,
+        "user": user_data,
+    }
+
 # ===== DEBUG ENDPOINTS =====
 
 @app.post("/debug/users/{telegram_id}/add-usdt")
 def debug_add_usdt(telegram_id: str, amount_usdt: float = 10):
-    telegram_id = telegram_id.strip()
+    if not DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
 
     with engine.begin() as conn:
         cur = conn.execute(
@@ -607,15 +668,6 @@ class UpgradeResponse(BaseModel):
 
 
 # --------- Core production logic ---------
-def production_multiplier(level: int) -> float:
-    """
-    Level 1 = bonus yok.
-    Level 2 = +%5, Level 3 = +%10 ...
-    """
-    level = int(level or 1)
-    if level < 1:
-        level = 1
-    return 1.0 + (level - 1) * 0.05
 
 def compute_pending_eggs(dragons: list[dict], last_collect_at: datetime | None, now: datetime) -> int:
     total = 0
@@ -656,8 +708,11 @@ def root():
     return {"status": "Draco backend çalışıyor 🐉"}
 
 @app.post("/users/register", response_model=RegisterResponse)
-def register_user(payload: RegisterRequest):
-    telegram_id = payload.telegram_id.strip()
+def register_user(
+    payload: RegisterRequest,
+    tg=Depends(get_current_telegram_user),
+):
+    telegram_id = tg["telegram_id"]
     referrer = payload.referrer_id.strip() if payload.referrer_id else None
 
     if referrer == telegram_id:
@@ -706,8 +761,8 @@ def register_user(payload: RegisterRequest):
         conn.close()
 
 @app.get("/users/{telegram_id}/eggs", response_model=EggsStatusResponse)
-def eggs_status(telegram_id: str):
-    telegram_id = telegram_id.strip()
+def eggs_status(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -731,9 +786,9 @@ def eggs_status(telegram_id: str):
             active_dragons=dragons
         )
     
-@app.post("/users/{telegram_id}/collect", response_model=CollectResponse)
-def collect_eggs(telegram_id: str):
-    telegram_id = telegram_id.strip()
+@app.post("/users/{telegram_id}/collect")
+def collect_eggs(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
     now = utcnow()
 
     with engine.begin() as conn:
@@ -822,9 +877,9 @@ def _get_all_dragons(conn, user_id: int):
     )
     return [dict(r) for r in cur.mappings().all()]
 
-@app.get("/users/{telegram_id}/dragons", response_model=DragonsListResponse)
-def list_user_dragons(telegram_id: str):
-    telegram_id = telegram_id.strip()
+@app.get("/users/{telegram_id}/dragons")
+def list_user_dragons(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -880,9 +935,9 @@ class ConvertResponse(BaseModel):
 
 EGG_TO_USDT_RATE = 500
 
-@app.post("/users/{telegram_id}/convert", response_model=ConvertResponse)
-def convert_eggs_to_usdt(telegram_id: str):
-    telegram_id = telegram_id.strip()
+@app.post("/users/{telegram_id}/convert")
+def convert_eggs_to_usdt(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -919,9 +974,11 @@ def convert_eggs_to_usdt(telegram_id: str):
 
 class AddEggsRequest(BaseModel):
     amount: int = Field(..., ge=1, le=1000000)
-
 @app.post("/debug/users/{telegram_id}/add-eggs")
 def debug_add_eggs(telegram_id: str, payload: AddEggsRequest):
+    if not DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+
     telegram_id = telegram_id.strip()
 
     with engine.begin() as conn:
@@ -955,9 +1012,9 @@ class BuyDragonResponse(BaseModel):
     expires_at: str
 
 
-@app.post("/users/{telegram_id}/buy/{dragon_code}", response_model=BuyDragonResponse)
-def buy_dragon(telegram_id: str, dragon_code: str):
-    telegram_id = telegram_id.strip()
+@app.post("/users/{telegram_id}/buy/{dragon_code}")
+def buy_dragon(telegram_id: str, dragon_code: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
     dragon_code = dragon_code.strip().lower()
 
     with engine.begin() as conn:
@@ -1079,8 +1136,8 @@ def _dragon_pending(d_row: dict, last_collect_at: datetime | None, now: datetime
     return max(0, produced)
 
 @app.get("/users/{telegram_id}/profile", response_model=ProfileResponse)
-def user_profile(telegram_id: str):
-    telegram_id = telegram_id.strip()
+def user_profile(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
     conn = get_conn()
     try:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -1204,15 +1261,17 @@ class WithdrawRequestResponse(BaseModel):
     remaining_usdt_balance: float
 
 class CreateOrderRequest(BaseModel):
-    telegram_id: str
     dragon_code: str
 
 class CreateDepositOrderRequest(BaseModel):
-    telegram_id: str
-    amount_usdt: float = Field(..., gt=0)
+    amount_usdt: float
+    
 @app.post("/wallet/deposit/orders")
-def create_deposit_order(req: CreateDepositOrderRequest):
-    telegram_id = req.telegram_id.strip()
+def create_deposit_order(
+    req: CreateDepositOrderRequest,
+    tg=Depends(get_current_telegram_user),
+):
+    telegram_id = tg["telegram_id"]
     amount_usdt = round(float(req.amount_usdt), 2)
 
     if amount_usdt < 1:
@@ -1300,9 +1359,13 @@ def get_deposit_order(order_id: int):
             "network": "TRON (TRC-20)",
         }
     
-@app.post("/users/{telegram_id}/withdraw/request", response_model=WithdrawRequestResponse)
-def withdraw_request(telegram_id: str, body: WithdrawRequestBody):
-    telegram_id = telegram_id.strip()
+@app.post("/users/{telegram_id}/withdraw/request")
+def withdraw_request(
+    telegram_id: str,
+    body: WithdrawRequestBody,
+    tg=Depends(get_current_telegram_user),
+):
+    telegram_id = tg["telegram_id"]
     amount_net = float(body.amount_usdt)
     address = body.address.strip()
 
@@ -1489,8 +1552,8 @@ def admin_reject_withdraw(
         return {"ok": True, "status": "rejected"}
 
 @app.get("/users/{telegram_id}/withdraws")
-def user_withdraw_history(telegram_id: str):
-    telegram_id = telegram_id.strip()
+def user_withdraw_history(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
     with engine.begin() as conn:
         user = _get_user_by_telegram(conn, telegram_id)
@@ -1521,7 +1584,8 @@ def user_withdraw_history(telegram_id: str):
         }
 
 @app.get("/users/{telegram_id}/referrals")
-def get_referrals(telegram_id: str):
+def get_referrals(telegram_id: str, tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
     conn = get_conn()
 
@@ -1645,14 +1709,17 @@ def admin_confirm_payment(
         }
 
 @app.post("/shop/orders")
-def create_shop_order(req: CreateOrderRequest):
+def create_shop_order(
+    req: CreateOrderRequest,
+    tg=Depends(get_current_telegram_user),
+):
+    telegram_id = tg["telegram_id"]
     dragon_code = req.dragon_code.strip().lower()
 
     dragon = DRAGONS.get(dragon_code)
     if not dragon:
         raise HTTPException(status_code=400, detail="Geçersiz ejderha")
 
-    # Minik ücretsiz starter, satın alınamaz
     if dragon.code == "minik" or float(dragon.price_usdt) <= 0:
         raise HTTPException(status_code=400, detail="Bu ejderha satın alınamaz")
 
@@ -1661,7 +1728,7 @@ def create_shop_order(req: CreateOrderRequest):
         raise HTTPException(status_code=500, detail="TRON_DEPOSIT_ADDRESS ayarlı değil")
 
     with engine.begin() as conn:
-        user = _get_user_by_telegram(conn, req.telegram_id)
+        user = _get_user_by_telegram(conn, telegram_id)
         if user is None:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
@@ -1698,7 +1765,6 @@ def create_shop_order(req: CreateOrderRequest):
         "expires_at": expires_at,
         "note": "Lütfen tutarı aynen gönderin (benzersiz tutar eşleştirme için).",
     }
-
 # ===== WATCHER (TRC20 USDT) + ORDER TIMEOUT CLEANUP =====
 
 _stop_watcher = threading.Event()
@@ -1715,6 +1781,7 @@ def _expire_old_orders(conn) -> int:
         {"now": now_iso},
     )
     return cur.rowcount
+
 def _expire_old_deposit_orders(conn) -> int:
     now_iso = utcnow().isoformat()
     cur = conn.execute(
@@ -1793,64 +1860,7 @@ def _watcher_loop():
 
         time.sleep(interval)
                 
-@app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade", response_model=UpgradeResponse)
-def upgrade_dragon(telegram_id: str, dragon_id: int):
-    telegram_id = telegram_id.strip()
-
-    with engine.begin() as conn:
-        user = _get_user_by_telegram(conn, telegram_id)
-        if user is None:
-            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-
-        cur = conn.execute(
-            text("""
-                SELECT id, level
-                FROM user_dragons
-                WHERE id = :did AND user_id = :uid AND is_active = 1
-            """),
-            {"did": int(dragon_id), "uid": int(user["id"])},
-        )
-        d = cur.mappings().fetchone()
-
-        if not d:
-            raise HTTPException(status_code=404, detail="Ejderha bulunamadı")
-
-        old_level = int(d["level"] or 1)
-        cost = upgrade_cost_eggs(old_level)
-        stored_eggs = int(user["eggs_ay"] or 0)
-
-        if stored_eggs < cost:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Yetersiz yumurta. Gerekli: {cost}, Sende: {stored_eggs}"
-            )
-
-        new_level = old_level + 1
-        new_eggs = stored_eggs - cost
-
-        conn.execute(
-            text("""
-                UPDATE users
-                SET eggs_ay = :eggs
-                WHERE id = :uid
-            """),
-            {"eggs": int(new_eggs), "uid": int(user["id"])},
-        )
-
-        conn.execute(
-            text("""
-                UPDATE user_dragons
-                SET level = :lvl
-                WHERE id = :did
-            """),
-            {"lvl": int(new_level), "did": int(dragon_id)},
-        )
-
-        return UpgradeResponse(
-            telegram_id=user["telegram_id"],
-            dragon_id=int(dragon_id),
-            old_level=old_level,
-            new_level=new_level,
-            cost_eggs=cost,
-            remaining_eggs_ay=new_eggs
-        )
+@app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade")
+def upgrade_dragon(telegram_id: str, dragon_id: int, tg=Depends(get_current_telegram_user)):
+    raise HTTPException(status_code=400, detail="Level sadece XP ile artar")
+ 

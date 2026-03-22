@@ -13,6 +13,12 @@ function formatDate(value) {
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString();
 }
+function getAuthHeaders(extra = {}) {
+  return {
+    ...extra,
+    "X-Telegram-Init-Data": tgInitData,
+  };
+}
 
 export default function App() {
   const [telegramId, setTelegramId] = useState("");
@@ -32,13 +38,14 @@ export default function App() {
   const [depositChecking, setDepositChecking] = useState(false);
   const [depositCreating, setDepositCreating] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [tgInitData, setTgInitData] = useState("");
 
   async function ensureRegistered(id) {
   const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
-    headers: {
+    headers: getAuthHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({ telegram_id: id }),
   });
 
@@ -54,7 +61,9 @@ export default function App() {
 
       await ensureRegistered(id);
 
-      const res = await fetch(`${API_BASE}/users/${id}/profile`);
+      const res = await fetch(`${API_BASE}/users/${id}/profile`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) {
         throw new Error(`Profil yüklenemedi (${res.status})`);
       }
@@ -70,7 +79,9 @@ export default function App() {
 
   async function loadReferrals(id) {
     try {
-      const res = await fetch(`${API_BASE}/users/${id}/referrals`);
+      const res = await fetch(`${API_BASE}/users/${id}/referrals`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) {
         throw new Error(`Referral bilgisi alınamadı (${res.status})`);
       }
@@ -101,7 +112,9 @@ export default function App() {
 
   async function loadWithdrawHistory(id) {
     try {
-      const res = await fetch(`${API_BASE}/users/${id}/withdraws`);
+      const res = await fetch(`${API_BASE}/users/${id}/withdraws`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) {
         throw new Error(`Withdraw history alınamadı (${res.status})`);
       }
@@ -117,6 +130,7 @@ export default function App() {
   try {
     const res = await fetch(`${API_BASE}/users/${telegramId}/buy/${code}`, {
       method: "POST",
+      headers: getAuthHeaders(),
     });
 
     let data = null;
@@ -150,6 +164,7 @@ export default function App() {
 
       const res = await fetch(`${API_BASE}/users/${telegramId}/collect`, {
         method: "POST",
+        headers: getAuthHeaders(),
       });
 
       if (!res.ok) {
@@ -175,6 +190,7 @@ export default function App() {
 
     const res = await fetch(`${API_BASE}/users/${telegramId}/convert`, {
       method: "POST",
+      headers: getAuthHeaders(),
     });
 
     let data = null;
@@ -233,9 +249,9 @@ export default function App() {
 
     const res = await fetch(`${API_BASE}/users/${telegramId}/withdraw/request`, {
       method: "POST",
-      headers: {
+      headers: getAuthHeaders({
         "Content-Type": "application/json",
-      },
+      }),
       body: JSON.stringify({
         address: withdrawAddress,
         amount_usdt: amount,
@@ -295,9 +311,9 @@ async function createDepositOrder() {
 
     const res = await fetch(`${API_BASE}/wallet/deposit/orders`, {
       method: "POST",
-      headers: {
+      headers: getAuthHeaders({
         "Content-Type": "application/json",
-      },
+      }),
       body: JSON.stringify({
         telegram_id: telegramId,
         amount_usdt: amount,
@@ -330,7 +346,10 @@ async function refreshDepositStatus() {
     setError("");
 
     const res = await fetch(
-      `${API_BASE}/wallet/deposit/orders/${depositOrder.order_id}`
+      `${API_BASE}/wallet/deposit/orders/${depositOrder.order_id}`,
+      {
+        headers: getAuthHeaders(),
+      }
     );
     const data = await res.json();
 
@@ -365,28 +384,34 @@ function resetDepositForm() {
 }
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    tg?.ready?.();
-    tg?.expand?.();
+  const tg = window.Telegram?.WebApp;
+  tg?.ready?.();
+  tg?.expand?.();
 
-    const tgUser = tg?.initDataUnsafe?.user;
-    if (tgUser?.id) {
-      setTelegramId(String(tgUser.id));
-      setPlayerName(tgUser.first_name || tgUser.username || "Dragon Master");
-      return;
-    }
+  const tgUser = tg?.initDataUnsafe?.user;
+  const initData = tg?.initData || "";
 
-    setTelegramId("1525781970");
-    setPlayerName("Dragon Master");
-  }, []);
+  setTgInitData(initData);
+
+  if (tgUser?.id) {
+    setTelegramId(String(tgUser.id));
+    setPlayerName(tgUser.first_name || tgUser.username || "Dragon Master");
+    return;
+  }
+
+  setTelegramId("1525781970");
+  setPlayerName("Dragon Master");
+}, []);
 
   useEffect(() => {
     if (!telegramId) return;
+    if (!tgInitData) return;
+
     loadProfile(telegramId);
     loadReferrals(telegramId);
     loadMarket();
     loadWithdrawHistory(telegramId);
-  }, [telegramId]);
+  }, [telegramId, tgInitData]);
 
   useEffect(() => {
   if (!depositOrder?.order_id) return;
@@ -463,7 +488,7 @@ function resetDepositForm() {
           <p className="tiny" style={{ marginTop: 8 }}>
             500 eggs = 1 USDT
           </p>
-          
+
           <p className="tiny last-collect">
             Last collect: {formatDate(profile?.last_collect_at ?? null)}
           </p>
