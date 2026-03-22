@@ -13,12 +13,6 @@ function formatDate(value) {
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString();
 }
-function getAuthHeaders(extra = {}) {
-  return {
-    ...extra,
-    "X-Telegram-Init-Data": tgInitData,
-  };
-}
 
 export default function App() {
   const [telegramId, setTelegramId] = useState("");
@@ -39,6 +33,13 @@ export default function App() {
   const [depositCreating, setDepositCreating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [tgInitData, setTgInitData] = useState("");
+
+  function getAuthHeaders(extra = {}) {
+  return {
+    ...extra,
+    "X-Telegram-Init-Data": tgInitData,
+  };
+}
 
   async function ensureRegistered(id) {
   const res = await fetch(`${API_BASE}/users/register`, {
@@ -390,7 +391,6 @@ function resetDepositForm() {
 
   const tgUser = tg?.initDataUnsafe?.user;
   const initData = tg?.initData || "";
-
   setTgInitData(initData);
 
   if (tgUser?.id) {
