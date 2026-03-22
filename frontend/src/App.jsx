@@ -219,7 +219,19 @@ export default function App() {
       );
     }
 
-  async function createDepositOrder() {
+    alert("Withdraw talebi gönderildi!");
+
+    setWithdrawAddress("");
+    setWithdrawAmount("");
+
+    await loadProfile(telegramId);
+    await loadWithdrawHistory(telegramId);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Withdraw hatası");
+  }
+}
+
+async function createDepositOrder() {
   if (!telegramId) return;
 
   try {
@@ -258,7 +270,9 @@ export default function App() {
 
     if (!res.ok) {
       throw new Error(
-        typeof data?.detail === "string" ? data.detail : "Deposit order oluşturulamadı"
+        typeof data?.detail === "string"
+          ? data.detail
+          : "Deposit order oluşturulamadı"
       );
     }
 
@@ -284,7 +298,9 @@ async function refreshDepositStatus() {
 
     if (!res.ok) {
       throw new Error(
-        typeof data?.detail === "string" ? data.detail : "Deposit durumu alınamadı"
+        typeof data?.detail === "string"
+          ? data.detail
+          : "Deposit durumu alınamadı"
       );
     }
 
@@ -308,18 +324,6 @@ async function refreshDepositStatus() {
 function resetDepositForm() {
   setDepositAmount("");
   setDepositOrder(null);
-}
-
-    alert("Withdraw talebi gönderildi!");
-
-    setWithdrawAddress("");
-    setWithdrawAmount("");
-
-    await loadProfile(telegramId);
-    await loadWithdrawHistory(telegramId);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Withdraw hatası");
-  }
 }
 
   useEffect(() => {
