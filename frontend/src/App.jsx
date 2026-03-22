@@ -33,11 +33,12 @@ export default function App() {
   const [depositCreating, setDepositCreating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [tgInitData, setTgInitData] = useState("");
-  const [soundOn, setSoundOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(true);
+  const [sfxOn, setSfxOn] = useState(true);
   const bgmRef = useRef(null);
   
   function playClick() {
-    if (!soundOn) return;
+    if (!sfxOn) return;
 
     const audio = new Audio("/sounds/click.mp3");
     audio.volume = 0.3;
@@ -420,12 +421,12 @@ function resetDepositForm() {
     bgmRef.current.volume = 0.2;
   }
 
-  if (soundOn) {
+  if (musicOn) {
     bgmRef.current.play().catch(() => {});
   } else {
     bgmRef.current.pause();
   }
-}, [soundOn]);
+}, [musicOn]);
 
   useEffect(() => {
     if (!telegramId) return;
@@ -459,6 +460,21 @@ function resetDepositForm() {
       <div className="container">
         <div className="card hero-card">
   <div className="hero-top">
+    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+  <button
+    className="nav-card"
+    onClick={() => setMusicOn((prev) => !prev)}
+  >
+    {musicOn ? "🎵 Music On" : "🎵 Music Off"}
+  </button>
+
+  <button
+    className="nav-card"
+    onClick={() => setSfxOn((prev) => !prev)}
+  >
+    {sfxOn ? "🔘 Click On" : "🔘 Click Off"}
+  </button>
+</div>
     <button
   className="nav-card"
   style={{ marginTop: 12 }}
