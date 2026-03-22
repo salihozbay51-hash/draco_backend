@@ -475,16 +475,6 @@ function resetDepositForm() {
     {sfxOn ? "🔘 Click On" : "🔘 Click Off"}
   </button>
 </div>
-    <button
-  className="nav-card"
-  style={{ marginTop: 12 }}
-  onClick={() => {
-  playClick();
-  setSoundOn((prev) => !prev);
-}}
->
-  {soundOn ? "🔊 Sound On" : "🔇 Sound Off"}
-</button>
     <div>
       <p className="muted">🐉 Draco Kingdom</p>
       <h1>{playerName}</h1>
