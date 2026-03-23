@@ -476,18 +476,9 @@ function resetDepositForm() {
   setDepositAmount("");
   setDepositOrder(null);
 }
-  
-  function resetDepositForm() {
-  setDepositAmount("");
-  setDepositOrder(null);
-}
 
   useEffect(() => {
     setLang(getSavedLanguage());
-  }, []);
-
-  useEffect(() => {
-    const tg = window.Telegram?.WebApp;
   }, []);
 
   useEffect(() => {
@@ -550,7 +541,7 @@ function resetDepositForm() {
     ? `https://t.me/dracokingdom_bot?start=${telegramId}`
     : "";
 
-  return (
+  return (   
     <div className="app-shell">
       <div className="container app-content">
         <div className="card hero-card">
@@ -613,57 +604,66 @@ function resetDepositForm() {
         <div className="status-box error-box">{error}</div>
       ) : (
         <>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <p className="muted">{t("eggs")}</p>
-              <h2>{profile?.total_eggs_ay ?? 0}</h2>
-              <p className="tiny">{t("stored")}: {profile?.stored_eggs_ay ?? 0}</p>
-            </div>
+         <div className="action-panel">
+           <div className="stats-grid resource-grid">
+             <div className="stat-card resource-card">
+               <p className="muted">{t("eggs")}</p>
+               <h2>{profile?.total_eggs_ay ?? 0}</h2>
+               <p className="tiny">{t("stored")}: {profile?.stored_eggs_ay ?? 0}</p>
+             </div>
 
-            <div className="stat-card">
-              <p className="muted">{t("usdt")}</p>
-              <h2>{profile?.usdt_balance ?? 0}</h2>
-              <p className="tiny">{t("pendingEggs")}: {profile?.pending_eggs_ay ?? 0}</p>
-            </div>
-          </div>
+             <div className="stat-card resource-card">
+               <p className="muted">{t("usdt")}</p>
+               <h2>{profile?.usdt_balance ?? 0}</h2>
+               <p className="tiny">{t("pendingEggs")}: {profile?.pending_eggs_ay ?? 0}</p>
+             </div>
+           </div>
 
-          <button
-            className="collect-btn"
-            onClick={() => {
-              playClick();
-              handleCollect();
-            }}
-            disabled={collecting}
-          >
-            {collecting ? t("collecting") : t("collectEggs")}
-          </button>
+           <div className="main-action-box">
+             <div className="main-action-top">
+               <div>
+                 <div className="main-action-title">⚔️ Main Action</div>
+                 <div className="tiny">Collect production from your dragons</div>
+               </div>
 
-          <button
-            className="collect-btn"
-            style={{ marginTop: 10, background: "#facc15", color: "#422006" }}
-            onClick={() => {
-              playClick();
-              handleConvert();
-            }}
-            disabled={converting}
-          >
-            {converting ? t("converting") : t("convertEggs")}
-          </button>
+               <div className="pending-pill">
+                 +{profile?.pending_eggs_ay ?? 0} AY
+               </div>
+             </div>
 
-          <p className="tiny" style={{ marginTop: 8 }}>
-            500 eggs = 1 USDT
-          </p>
+             <button
+               className="collect-btn main-collect-btn"
+               onClick={() => {
+                 playClick();
+                 handleCollect();
+               }}
+               disabled={collecting}
+             >
+               {collecting ? t("collecting") : t("collectEggs")}
+             </button>
 
-          <p className="tiny last-collect">
-            {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
-          </p>
-        </>
-      )}
+             <button
+               className="convert-btn"
+               onClick={() => {
+                 playClick();
+                 handleConvert();
+             }}
+             disabled={converting}
+           >
+             {converting ? t("converting") : t("convertEggs")}
+           </button>
+
+           <p className="tiny convert-note">500 eggs = 1 USDT</p>
+           <p className="tiny last-collect">
+             {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
+           </p>
+         </div>
+       </div>
 
       {page === "home" && (
   <>
     <div className="dragon-chamber">
-      <div className="chamber-title">🔥 Dragon Chamber</div>
+      <div className="section-title-main">🔥 Dragon Chamber</div>
 
       <div className="dragon-grid">
         {profile?.dragons?.length ? (
@@ -720,7 +720,7 @@ function resetDepositForm() {
 
       {page === "market" && (
         <div className="dragon-chamber">
-          <div className="chamber-title">🏪 Draco Market</div>
+          <div className="section-title-main">🏪 Draco Market</div>
 
           <div className="dragon-grid">
             {marketDragons.map((dragon) => (
@@ -744,7 +744,7 @@ function resetDepositForm() {
           </div>
 
           <button
-            className="collect-btn"
+            className="secondary-btn"
             style={{ marginTop: 16 }}
             onClick={() => {
               playClick();
@@ -758,7 +758,7 @@ function resetDepositForm() {
 
       {page === "deposit" && (
   <div className="dragon-chamber">
-    <div className="chamber-title">➕ Deposit USDT</div>
+    <div className="section-title-main">➕ Deposit USDT</div>
 
     <div className="dragon-card">
       <div className="tiny">Current balance</div>
@@ -803,7 +803,7 @@ function resetDepositForm() {
         />
 
         <button
-          className="collect-btn"
+          className="secondary-btn"
           style={{ marginTop: 10 }}
           onClick={async () => {
             playClick();
@@ -838,7 +838,7 @@ function resetDepositForm() {
         )}
 
         <button
-          className="collect-btn"
+          className="secondary-btn"
           style={{ marginTop: 12 }}
           onClick={() => {
             playClick();
@@ -851,7 +851,7 @@ function resetDepositForm() {
 
         {(depositOrder.status === "paid" || depositOrder.status === "expired") && (
           <button
-            className="collect-btn"
+            className="secondary-btn"
             style={{ marginTop: 12 }}
             onClick={() => {
               playClick();
@@ -865,7 +865,7 @@ function resetDepositForm() {
     )}
 
     <button
-      className="collect-btn"
+      className="secondary-btn"
       style={{ marginTop: 12 }}
       onClick={() => {
         playClick();
@@ -879,7 +879,7 @@ function resetDepositForm() {
 
       {page === "withdraw" && (
   <div className="dragon-chamber">
-    <div className="chamber-title">💸 Withdraw</div>
+    <div className="section-title-main">💸 Withdraw</div>
 
     <div className="dragon-card">
       <div className="tiny">Available balance</div>
@@ -914,7 +914,7 @@ function resetDepositForm() {
     </button>
 
     <button
-      className="collect-btn"
+      className="secondary-btn"
       style={{ marginTop: 12 }}
       onClick={() => {
         playClick();
@@ -925,7 +925,7 @@ function resetDepositForm() {
     </button>
 
     <div style={{ marginTop: 20 }}>
-      <div className="chamber-title">📜 Withdraw History</div>
+      <div className="section-title-sub">📜 Withdraw History</div>
 
       {withdrawHistory.length === 0 ? (
         <div className="tiny">Henüz çekim talebi yok</div>
@@ -950,7 +950,7 @@ function resetDepositForm() {
 
     {page === "leaderboard" && (
   <div className="dragon-chamber">
-    <div className="chamber-title">{t("leaderboardTitle")}</div>
+    <div className="section-title-main">{t("leaderboardTitle")}</div>
 
     {leaderboardLoading ? (
       <div className="tiny">{t("loadingLeaderboard")}</div>
@@ -1032,7 +1032,7 @@ function resetDepositForm() {
     </button>
 
     <button
-      className="collect-btn"
+      className="secondary-btn"
       style={{ marginTop: 12 }}
       onClick={() => {
         playClick();
@@ -1130,7 +1130,7 @@ function resetDepositForm() {
         <span className="muted">{t("threeLevels")}</span>
       </div>
 
-      <div className="stats-grid">
+      <div className="stats-grid resource-grid">
         <div className="stat-card">
           <p className="muted">{t("level1")}</p>
           <h2>{refs.level1}</h2>
@@ -1149,7 +1149,5 @@ function resetDepositForm() {
     </div>
   </>
 )}
-    </div>
-  </div>
-);
-}
+</>
+)}

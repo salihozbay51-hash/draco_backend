@@ -456,3 +456,124 @@ body {
 .bottom-nav .nav-card {
   min-height: 84px;
 }
+
+.resource-grid {
+  margin-top: 0;
+}
+
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resource-card {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.main-action-box {
+  background: linear-gradient(180deg, #16283d 0%, #0f172a 100%);
+  border: 1px solid #b8924a;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.main-action-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.main-action-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f3d38b;
+}
+
+.pending-pill {
+  border: 1px solid #3f5f49;
+  background: rgba(45, 111, 79, 0.18);
+  color: #9ee6b8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.main-collect-btn {
+  margin-top: 0;
+}
+
+.convert-btn {
+  margin-top: 12px;
+  width: 100%;
+  border: 1px solid #b8924a;
+  border-radius: 18px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 16px;
+  background: linear-gradient(135deg, #b68a2f, #8e6a21);
+  color: #fff4d6;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.convert-btn:active {
+  transform: scale(0.97);
+}
+
+.convert-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.convert-note {
+  margin-top: 10px;
+}
+
+.secondary-btn {
+  margin-top: 18px;
+  width: 100%;
+  border: 1px solid #3a4a5f;
+  border-radius: 16px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  color: #f3e7c2;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.secondary-btn:active {
+  transform: scale(0.97);
+}
+
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.section-title-main {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 14px;
+  color: #f3d38b;
+  text-align: center;
+}
+
+.section-title-sub {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #f3d38b;
+}
