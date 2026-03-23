@@ -577,3 +577,55 @@ body {
   margin-bottom: 12px;
   color: #f3d38b;
 }
+
+.market-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.market-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.market-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f3d38b;
+}
+
+.market-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #9ee6b8;
+}
+
+.buy-btn {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid #b8924a;
+  border-radius: 16px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  background: linear-gradient(135deg, #2d6f4f, #1f5c40);
+  color: #f3e7c2;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.buy-btn:active {
+  transform: scale(0.97);
+}
+
+.form-input {
+  width: 100%;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: white;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 15px;
+}

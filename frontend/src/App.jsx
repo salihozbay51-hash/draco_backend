@@ -724,14 +724,25 @@ function resetDepositForm() {
 
           <div className="dragon-grid">
             {marketDragons.map((dragon) => (
-              <div key={dragon.code} className="dragon-card">
-                <strong>🐉 {prettyCode(dragon.code)}</strong>
+              <div
+                key={dragon.code}
+                className="dragon-card fantasy-dragon-card market-card"
+              >
+                <div className="market-card-top">
+                  <div className="market-card-title">
+                    🐉 {prettyCode(dragon.code)}
+                  </div>
+
+                  <div className="market-price">
+                    💰 {dragon.price_usdt} USDT
+                  </div>
+                </div>
+
                 <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
-                <div className="tiny">💰 Price: {dragon.price_usdt} USDT</div>
-                <div className="tiny">⏳ {dragon.lifetime_days} days</div>
+              <div className="tiny">⏳ {dragon.lifetime_days} days</div>
 
                 <button
-                  className="collect-main"
+                  className="buy-btn"
                   onClick={() => {
                     playClick();
                     buyDragon(dragon.code);
@@ -768,7 +779,7 @@ function resetDepositForm() {
     {!depositOrder && (
       <>
         <input
-          className="invite-input"
+          className="form-input"
           placeholder="Amount (min 1 USDT)"
           style={{ marginTop: 12 }}
           value={depositAmount}
@@ -796,7 +807,7 @@ function resetDepositForm() {
 
         <div className="tiny" style={{ marginTop: 10 }}>Send to address</div>
         <input
-          className="invite-input"
+          className="form-input"
           readOnly
           value={depositOrder.pay_to || ""}
           style={{ marginTop: 6 }}
@@ -887,7 +898,7 @@ function resetDepositForm() {
     </div>
 
     <input
-      className="invite-input"
+      className="form-input"
       placeholder="Wallet address"
       style={{ marginTop: 12 }}
       value={withdrawAddress}
@@ -895,7 +906,7 @@ function resetDepositForm() {
     />
 
     <input
-      className="invite-input"
+      className="form-input"
       placeholder="Amount"
       style={{ marginTop: 12 }}
       value={withdrawAmount}
