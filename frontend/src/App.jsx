@@ -362,7 +362,6 @@ async function createDepositOrder() {
         "Content-Type": "application/json",
       }),
       body: JSON.stringify({
-        telegram_id: telegramId,
         amount_usdt: amount,
       }),
     });
@@ -1044,3 +1043,7 @@ function resetDepositForm() {
     </div>
   </>
 )}
+    </div>
+  </div>
+);
+}
