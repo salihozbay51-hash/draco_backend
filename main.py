@@ -1227,7 +1227,7 @@ class ProfileResponse(BaseModel):
     pending_eggs_ay: int
     total_eggs_ay: int
     last_collect_at: str | None
-    dragons: list[ProfileDragonItem
+    dragons: list[ProfileDragonItem]
 
 def _safe_price_usdt(dragon_type):
     # models.py içinde Dragon(price_usdt, eggs_per_day, lifetime_days) kullanıyorsun
