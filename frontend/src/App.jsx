@@ -981,31 +981,66 @@ function resetDepositForm() {
 </div>
 
 {refs && (
-  <div className="card">
-    <div className="section-head">
-      <h3>Referrals</h3>
-      <span className="muted">3 Levels</span>
+  <>
+    <div className="card">
+      <div className="section-head">
+        <h3>Invite Friends</h3>
+        <span className="muted">Referral System</span>
+      </div>
+
+      <div className="dragon-item">
+        <p className="muted" style={{ marginBottom: 8 }}>
+          Your invite link
+        </p>
+
+        <input
+          value={inviteLink}
+          readOnly
+          className="invite-input"
+        />
+
+        <button
+          className="collect-btn"
+          style={{ marginTop: 12 }}
+          onClick={async () => {
+            playClick();
+            try {
+              if (inviteLink) {
+                await navigator.clipboard.writeText(inviteLink);
+                alert("Link kopyalandı!");
+              }
+            } catch (e) {
+              alert("Kopyalama başarısız");
+            }
+          }}
+        >
+          Copy Link
+        </button>
+      </div>
     </div>
 
-    <div className="stats-grid">
-      <div className="stat-card">
-        <p className="muted">Level 1</p>
-        <h2>{refs.level1}</h2>
+    <div className="card">
+      <div className="section-head">
+        <h3>Referrals</h3>
+        <span className="muted">3 Levels</span>
       </div>
 
-      <div className="stat-card">
-        <p className="muted">Level 2</p>
-        <h2>{refs.level2}</h2>
-      </div>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <p className="muted">Level 1</p>
+          <h2>{refs.level1}</h2>
+        </div>
 
-      <div className="stat-card">
-        <p className="muted">Level 3</p>
-        <h2>{refs.level3}</h2>
+        <div className="stat-card">
+          <p className="muted">Level 2</p>
+          <h2>{refs.level2}</h2>
+        </div>
+
+        <div className="stat-card">
+          <p className="muted">Level 3</p>
+          <h2>{refs.level3}</h2>
+        </div>
       </div>
     </div>
-  </div>
+  </>
 )}
-    </div>
-  </div>
-);
-}
