@@ -137,28 +137,29 @@ function handleChangeLanguage(nextLang) {
   }
 }
 
-  async function loadProfile(id) {
-    try {
-      setLoading(true);
-      setError("");
+async function loadProfile(id, silent = false) {
+  try {
+    if (!silent) setLoading(true);
+    setError("");
 
-      await ensureRegistered(id);
+    await ensureRegistered(id);
 
-      const res = await fetch(`${API_BASE}/users/${id}/profile`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) {
-        throw new Error(`Profil yüklenemedi (${res.status})`);
-      }
+    const res = await fetch(`${API_BASE}/users/${id}/profile`, {
+      headers: getAuthHeaders(),
+    });
 
-      const data = await res.json();
-      setProfile(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      throw new Error(`Profil yüklenemedi (${res.status})`);
     }
+
+    const data = await res.json();
+    setProfile(data);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+  } finally {
+    if (!silent) setLoading(false);
   }
+}
 
   async function loadReferrals(id) {
     try {
@@ -262,38 +263,51 @@ function handleChangeLanguage(nextLang) {
 }
 
   async function handleCollect() {
-    if (!telegramId) return;
-
-    try {
-      setCollecting(true);
-      setError("");
-
-      const res = await fetch(`${API_BASE}/users/${telegramId}/collect`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Collect başarısız (${res.status})`);
-      }
-
-      await loadProfile(telegramId);
-      await loadReferrals(telegramId);
-      await loadLeaderboard();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Collect hatası");
-    } finally {
-      setCollecting(false);
-    }
-  }
-  
-  async function handleConvert() {
-  if (!telegramId) return;
+  if (!telegramId || collecting) return;
 
   try {
+    setCollecting(true);
     setError("");
+
+    const res = await fetch(`${API_BASE}/users/${telegramId}/collect`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      throw new Error(
+        typeof data?.detail === "string"
+          ? data.detail
+          : `Collect başarısız (${res.status})`
+      );
+    }
+
+    spawnReward(data?.added_eggs_ay ?? profile?.pending_eggs_ay ?? 0);
+
+    await loadProfile(telegramId, true);
+    await loadReferrals(telegramId);
+    await loadLeaderboard();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Collect hatası";
+    alert(msg);
+  } finally {
+    setCollecting(false);
+  }
+}
+  
+async function handleConvert() {
+  if (!telegramId || converting) return;
+
+  try {
     setConverting(true);
+    setError("");
 
     const res = await fetch(`${API_BASE}/users/${telegramId}/convert`, {
       method: "POST",
@@ -317,11 +331,12 @@ function handleChangeLanguage(nextLang) {
 
     alert(`Converted: +${data.converted_usdt} USDT`);
 
-    await loadProfile(telegramId);
+    await loadProfile(telegramId, true);
     await loadReferrals(telegramId);
     await loadLeaderboard();
   } catch (err) {
-    setError(err instanceof Error ? err.message : "Convert hatası");
+    const msg = err instanceof Error ? err.message : "Convert hatası";
+    alert(msg);
   } finally {
     setConverting(false);
   }
@@ -657,8 +672,7 @@ function resetDepositForm() {
                onClick={() => {
                  playClick();
                  handleCollect();
-                 spawnReward(profile?.pending_eggs_ay ?? 0);
-               }}
+              }}
                disabled={collecting}
              >
                {collecting ? t("collecting") : t("collectEggs")}
