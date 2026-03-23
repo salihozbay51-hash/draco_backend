@@ -981,43 +981,37 @@ function resetDepositForm() {
 
 {refs && (
   <>
+    {/* INVITE LINK */}
     <div className="card">
       <div className="section-head">
         <h3>Invite Friends</h3>
-        <span className="muted">Referral System</span>
+        <span className="muted">Referral Link</span>
       </div>
+      <input
+        value={inviteLink}
+        readOnly
+        className="invite-input"
+        style={{ marginTop: 10 }}
+      />
 
-      <div className="dragon-item">
-        <p className="muted" style={{ marginBottom: 8 }}>
-          Your invite link
-        </p>
-
-        <input
-          value={inviteLink}
-          readOnly
-          className="invite-input"
-        />
-
-        <button
-          className="collect-btn"
-          style={{ marginTop: 12 }}
-          onClick={async () => {
-            playClick();
-            try {
-              if (inviteLink) {
-                await navigator.clipboard.writeText(inviteLink);
-                alert("Link kopyalandı!");
-              }
-            } catch (e) {
-              alert("Kopyalama başarısız");
-            }
-          }}
-        >
-          Copy Link
-        </button>
-      </div>
+      <button
+        className="collect-btn"
+        style={{ marginTop: 12 }}
+        onClick={async () => {
+          playClick();
+          try {
+            await navigator.clipboard.writeText(inviteLink);
+            alert("Link kopyalandı!");
+          } catch {
+            alert("Kopyalama başarısız");
+          }
+        }}
+      >
+        Copy Link
+      </button>
     </div>
 
+    {/* REFERRAL STATS */}
     <div className="card">
       <div className="section-head">
         <h3>Referrals</h3>
