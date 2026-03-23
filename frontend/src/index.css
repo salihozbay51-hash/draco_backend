@@ -629,3 +629,35 @@ body {
   padding: 12px;
   font-size: 15px;
 }
+
+.floating-rewards {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 999;
+}
+
+.floating-reward {
+  color: #9ee6b8;
+  font-weight: bold;
+  font-size: 20px;
+  text-shadow: 0 0 10px rgba(45, 111, 79, 0.8);
+
+  animation: floatUp 1.2s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60px) scale(1.2);
+  }
+}

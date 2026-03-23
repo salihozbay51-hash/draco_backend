@@ -77,6 +77,7 @@ export default function App() {
   const [sfxOn, setSfxOn] = useState(true);
   const bgmRef = useRef(null);
   const t = (key) => translate(lang, key);
+  const [floatingRewards, setFloatingRewards] = useState([]);
 
 function handleChangeLanguage(nextLang) {
   setLang(nextLang);
@@ -93,6 +94,19 @@ function handleChangeLanguage(nextLang) {
   if (s.length <= 4) return s;
   return `${s.slice(0, 2)}***${s.slice(-2)}`;
 }
+  
+  function spawnReward(amount) {
+  const id = Date.now();
+
+  setFloatingRewards((prev) => [
+    ...prev,
+    { id, amount }
+  ]);
+
+  setTimeout(() => {
+    setFloatingRewards((prev) => prev.filter((r) => r.id !== id));
+  }, 1200);
+} 
 
   function playClick() {
     if (!sfxOn) return;
@@ -543,6 +557,13 @@ function resetDepositForm() {
 
   return (   
     <div className="app-shell">
+      <div className="floating-rewards">
+  {floatingRewards.map((r) => (
+    <div key={r.id} className="floating-reward">
+      +{r.amount} 🥚
+    </div>
+  ))}
+</div>
       <div className="container app-content">
         <div className="card hero-card">
   <div className="hero-header">
@@ -636,6 +657,7 @@ function resetDepositForm() {
                onClick={() => {
                  playClick();
                  handleCollect();
+                 spawnReward(profile?.pending_eggs_ay ?? 0);
                }}
                disabled={collecting}
              >
