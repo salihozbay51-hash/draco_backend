@@ -1987,4 +1987,6 @@ def _watcher_loop():
 @app.post("/users/{telegram_id}/dragons/{dragon_id}/upgrade")
 def upgrade_dragon(telegram_id: str, dragon_id: int, tg=Depends(get_current_telegram_user)):
     raise HTTPException(status_code=400, detail="Level sadece XP ile artar")
+
+
  

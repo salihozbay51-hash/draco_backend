@@ -837,7 +837,7 @@ function resetDepositForm() {
   </div>
 )}
 
-{page === "leaderboard" && (
+    {page === "leaderboard" && (
   <div className="dragon-chamber">
     <div className="chamber-title">🏆 Leaderboard</div>
 
