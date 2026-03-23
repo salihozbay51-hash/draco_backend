@@ -1079,18 +1079,18 @@ function resetDepositForm() {
 
 <div className="bottom-grid bottom-nav">
   <button
-    className="nav-card"
+    className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
     onClick={() => {
-      playClick();
-      setPage("market");
-    }}
-  >
+    playClick();
+    setPage("market");
+  }}
+>
     <span className="nav-title">{t("market")}</span>
     <span className="muted">{t("buyNewDragons")}</span>
   </button>
 
   <button
-    className="nav-card"
+    className={`nav-card ${page === "deposit" ? "nav-card-active" : ""}`}
     onClick={() => {
       playClick();
       setPage("deposit");
@@ -1101,7 +1101,7 @@ function resetDepositForm() {
   </button>
 
   <button
-    className="nav-card"
+    className={`nav-card ${page === "withdraw" ? "nav-card-active" : ""}`}
     onClick={() => {
       playClick();
       setPage("withdraw");
@@ -1112,7 +1112,7 @@ function resetDepositForm() {
   </button>
 
   <button
-    className="nav-card"
+    className={`nav-card ${page === "leaderboard" ? "nav-card-active" : ""}`}
     onClick={() => {
       playClick();
       setPage("leaderboard");
