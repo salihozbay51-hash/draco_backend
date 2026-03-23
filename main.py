@@ -944,6 +944,26 @@ def get_order(order_id: int):
             "expires_at": row["expires_at"],
             "paid_txid": row["paid_txid"],
         }
+class LeaderboardPlayerItem(BaseModel):
+    rank: int
+    telegram_id: str
+    eggs_ay: int
+    usdt_balance: float
+    total_power: int
+    dragon_count: int
+
+class LeaderboardMeItem(BaseModel):
+    rank: int | None
+    telegram_id: str
+    eggs_ay: int
+    usdt_balance: float
+    total_power: int
+    dragon_count: int
+
+class LeaderboardResponse(BaseModel):
+    top_players: list[LeaderboardPlayerItem]
+    me: LeaderboardMeItem | None = None
+        
 @app.get("/leaderboard", response_model=LeaderboardResponse)
 def get_leaderboard(tg=Depends(get_current_telegram_user)):
     telegram_id = tg["telegram_id"]
@@ -1207,27 +1227,7 @@ class ProfileResponse(BaseModel):
     pending_eggs_ay: int
     total_eggs_ay: int
     last_collect_at: str | None
-    dragons: list[ProfileDragonItem]
-
-class LeaderboardPlayerItem(BaseModel):
-    rank: int
-    telegram_id: str
-    eggs_ay: int
-    usdt_balance: float
-    total_power: int
-    dragon_count: int
-
-class LeaderboardMeItem(BaseModel):
-    rank: int | None
-    telegram_id: str
-    eggs_ay: int
-    usdt_balance: float
-    total_power: int
-    dragon_count: int
-
-class LeaderboardResponse(BaseModel):
-    top_players: list[LeaderboardPlayerItem]
-    me: LeaderboardMeItem | None = None
+    dragons: list[ProfileDragonItem
 
 def _safe_price_usdt(dragon_type):
     # models.py içinde Dragon(price_usdt, eggs_per_day, lifetime_days) kullanıyorsun
