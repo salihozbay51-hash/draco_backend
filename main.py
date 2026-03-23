@@ -552,6 +552,27 @@ def get_current_telegram_user(x_telegram_init_data: str | None = Header(default=
         "telegram_id": telegram_id,
         "user": user_data,
     }
+def _get_total_power_for_user(conn, user_id: int) -> int:
+    cur = conn.execute(
+        text("""
+            SELECT COALESCE(SUM(eggs_per_day), 0)
+            FROM user_dragons
+            WHERE user_id = :uid AND is_active = 1
+        """),
+        {"uid": int(user_id)},
+    )
+    return int(cur.scalar() or 0)
+
+def _get_dragon_count_for_user(conn, user_id: int) -> int:
+    cur = conn.execute(
+        text("""
+            SELECT COUNT(*)
+            FROM user_dragons
+            WHERE user_id = :uid AND is_active = 1
+        """),
+        {"uid": int(user_id)},
+    )
+    return int(cur.scalar() or 0)
 
 # ===== DEBUG ENDPOINTS =====
 
@@ -923,7 +944,90 @@ def get_order(order_id: int):
             "expires_at": row["expires_at"],
             "paid_txid": row["paid_txid"],
         }
+@app.get("/leaderboard", response_model=LeaderboardResponse)
+def get_leaderboard(tg=Depends(get_current_telegram_user)):
+    telegram_id = tg["telegram_id"]
 
+    with engine.begin() as conn:
+        # Top oyuncular:
+        # sıralama önceliği:
+        # 1) stored eggs
+        # 2) usdt balance
+        # 3) active dragon total power
+        cur = conn.execute(
+            text("""
+                SELECT
+                    u.id,
+                    u.telegram_id,
+                    COALESCE(u.eggs_ay, 0) AS eggs_ay,
+                    COALESCE(u.usdt_balance, 0) AS usdt_balance,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN d.eggs_per_day ELSE 0 END), 0) AS total_power,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN 1 ELSE 0 END), 0) AS dragon_count
+                FROM users u
+                LEFT JOIN user_dragons d ON d.user_id = u.id
+                GROUP BY u.id, u.telegram_id, u.eggs_ay, u.usdt_balance
+                ORDER BY
+                    COALESCE(u.eggs_ay, 0) DESC,
+                    COALESCE(u.usdt_balance, 0) DESC,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN d.eggs_per_day ELSE 0 END), 0) DESC,
+                    u.id ASC
+                LIMIT 10
+            """)
+        )
+        rows = cur.mappings().all()
+
+        top_players: list[LeaderboardPlayerItem] = []
+        for idx, row in enumerate(rows, start=1):
+            top_players.append(
+                LeaderboardPlayerItem(
+                    rank=idx,
+                    telegram_id=row["telegram_id"],
+                    eggs_ay=int(row["eggs_ay"] or 0),
+                    usdt_balance=float(row["usdt_balance"] or 0),
+                    total_power=int(row["total_power"] or 0),
+                    dragon_count=int(row["dragon_count"] or 0),
+                )
+            )
+
+        # Kullanıcının kendi sırasını hesapla
+        all_rows_cur = conn.execute(
+            text("""
+                SELECT
+                    u.id,
+                    u.telegram_id,
+                    COALESCE(u.eggs_ay, 0) AS eggs_ay,
+                    COALESCE(u.usdt_balance, 0) AS usdt_balance,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN d.eggs_per_day ELSE 0 END), 0) AS total_power,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN 1 ELSE 0 END), 0) AS dragon_count
+                FROM users u
+                LEFT JOIN user_dragons d ON d.user_id = u.id
+                GROUP BY u.id, u.telegram_id, u.eggs_ay, u.usdt_balance
+                ORDER BY
+                    COALESCE(u.eggs_ay, 0) DESC,
+                    COALESCE(u.usdt_balance, 0) DESC,
+                    COALESCE(SUM(CASE WHEN d.is_active = 1 THEN d.eggs_per_day ELSE 0 END), 0) DESC,
+                    u.id ASC
+            """)
+        )
+        all_rows = all_rows_cur.mappings().all()
+
+        me = None
+        for idx, row in enumerate(all_rows, start=1):
+            if str(row["telegram_id"]) == str(telegram_id):
+                me = LeaderboardMeItem(
+                    rank=idx,
+                    telegram_id=row["telegram_id"],
+                    eggs_ay=int(row["eggs_ay"] or 0),
+                    usdt_balance=float(row["usdt_balance"] or 0),
+                    total_power=int(row["total_power"] or 0),
+                    dragon_count=int(row["dragon_count"] or 0),
+                )
+                break
+
+        return LeaderboardResponse(
+            top_players=top_players,
+            me=me,
+        )
 
    # --------- AY -> USDT CONVERT ---------
 
@@ -1104,6 +1208,26 @@ class ProfileResponse(BaseModel):
     total_eggs_ay: int
     last_collect_at: str | None
     dragons: list[ProfileDragonItem]
+
+class LeaderboardPlayerItem(BaseModel):
+    rank: int
+    telegram_id: str
+    eggs_ay: int
+    usdt_balance: float
+    total_power: int
+    dragon_count: int
+
+class LeaderboardMeItem(BaseModel):
+    rank: int | None
+    telegram_id: str
+    eggs_ay: int
+    usdt_balance: float
+    total_power: int
+    dragon_count: int
+
+class LeaderboardResponse(BaseModel):
+    top_players: list[LeaderboardPlayerItem]
+    me: LeaderboardMeItem | None = None
 
 def _safe_price_usdt(dragon_type):
     # models.py içinde Dragon(price_usdt, eggs_per_day, lifetime_days) kullanıyorsun

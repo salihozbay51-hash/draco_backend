@@ -36,7 +36,17 @@ export default function App() {
   const [musicOn, setMusicOn] = useState(true);
   const [sfxOn, setSfxOn] = useState(true);
   const bgmRef = useRef(null);
-  
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [myRank, setMyRank] = useState(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  function maskTelegramId(id) {
+  if (!id) return "Unknown";
+  const s = String(id);
+  if (s.length <= 4) return s;
+  return `${s.slice(0, 2)}***${s.slice(-2)}`;
+}
+
   function playClick() {
     if (!sfxOn) return;
 
@@ -137,6 +147,28 @@ export default function App() {
       console.error("Withdraw history fetch error:", err);
     }
   }
+  
+  async function loadLeaderboard() {
+    try {
+      setLeaderboardLoading(true);
+
+      const res = await fetch(`${API_BASE}/leaderboard`, {
+      headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+      throw new Error(`Leaderboard alınamadı (${res.status})`);
+      }
+
+      const data = await res.json();
+      setLeaderboard(data.top_players || []);
+      setMyRank(data.me || null);
+    } catch (err) {
+      console.error("Leaderboard fetch error:", err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }
 
  async function buyDragon(code) {
   try {
@@ -161,6 +193,7 @@ export default function App() {
     alert(`${prettyCode(data?.dragon_code || code)} başarıyla satın alındı!`);
     await loadProfile(telegramId);
     await loadReferrals(telegramId);
+    await loadLeaderboard();
     setPage("home");
   } catch (e) {
     alert("Satın alma sırasında bir hata oluştu");
@@ -186,6 +219,7 @@ export default function App() {
 
       await loadProfile(telegramId);
       await loadReferrals(telegramId);
+      await loadLeaderboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Collect hatası");
     } finally {
@@ -224,6 +258,7 @@ export default function App() {
 
     await loadProfile(telegramId);
     await loadReferrals(telegramId);
+    await loadLeaderboard();
   } catch (err) {
     setError(err instanceof Error ? err.message : "Convert hatası");
   } finally {
@@ -381,6 +416,7 @@ async function refreshDepositStatus() {
 
     if (data.status === "paid") {
       await loadProfile(telegramId);
+      await loadLeaderboard();
       alert("Ödeme alındı, bakiyen güncellendi!");
     }
   } catch (err) {
@@ -407,11 +443,10 @@ function resetDepositForm() {
   if (tgUser?.id) {
     setTelegramId(String(tgUser.id));
     setPlayerName(tgUser.first_name || tgUser.username || "Dragon Master");
-    return;
+  } else {
+    // Telegram yoksa kullanıcıyı blokla
+    setError("Bu uygulama sadece Telegram içinde çalışır.");
   }
-
-  setTelegramId("1525781970");
-  setPlayerName("Dragon Master");
 }, []);
   
   useEffect(() => {
@@ -436,6 +471,7 @@ function resetDepositForm() {
     loadReferrals(telegramId);
     loadMarket();
     loadWithdrawHistory(telegramId);
+    loadLeaderboard();
   }, [telegramId, tgInitData]);
 
   useEffect(() => {
@@ -776,6 +812,95 @@ function resetDepositForm() {
     >
       Back to Home
     </button>
+      {page === "leaderboard" && (
+  <div className="dragon-chamber">
+    <div className="chamber-title">🏆 Leaderboard</div>
+
+    {leaderboardLoading ? (
+      <div className="tiny">Leaderboard yükleniyor...</div>
+    ) : leaderboard.length === 0 ? (
+      <div className="tiny">Henüz oyuncu yok</div>
+    ) : (
+      <div style={{ display: "grid", gap: 10 }}>
+        {leaderboard.map((player) => (
+          <div
+            key={player.rank}
+            className="dragon-card"
+            style={{
+              border:
+                String(player.telegram_id) === String(telegramId)
+                  ? "1px solid #facc15"
+                  : "1px solid transparent",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <strong>
+                  {player.rank === 1
+                    ? "🥇"
+                    : player.rank === 2
+                    ? "🥈"
+                    : player.rank === 3
+                    ? "🥉"
+                    : `#${player.rank}`}{" "}
+                  {String(player.telegram_id) === String(telegramId)
+                    ? `${playerName} (You)`
+                    : maskTelegramId(player.telegram_id)}
+                </strong>
+
+                <div className="tiny">Eggs: {player.eggs_ay}</div>
+                <div className="tiny">USDT: {player.usdt_balance}</div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div className="tiny">Power</div>
+                <strong>{player.total_power}</strong>
+                <div className="tiny">{player.dragon_count} dragons</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {myRank && (
+      <div
+        className="dragon-card"
+        style={{ marginTop: 14, border: "1px solid #facc15" }}
+      >
+        <div className="tiny">Your Rank</div>
+        <strong>#{myRank.rank}</strong>
+        <div className="tiny">Eggs: {myRank.eggs_ay}</div>
+        <div className="tiny">USDT: {myRank.usdt_balance}</div>
+        <div className="tiny">Power: {myRank.total_power}</div>
+        <div className="tiny">Dragons: {myRank.dragon_count}</div>
+      </div>
+    )}
+
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={() => {
+        playClick();
+        loadLeaderboard();
+      }}
+      disabled={leaderboardLoading}
+    >
+      {leaderboardLoading ? "Refreshing..." : "Refresh Leaderboard"}
+    </button>
+
+    <button
+      className="collect-btn"
+      style={{ marginTop: 12 }}
+      onClick={() => {
+        playClick();
+        setPage("home");
+      }}
+    >
+      Back to Home
+    </button>
+  </div>
+)}
 
     <div style={{ marginTop: 20 }}>
       <div className="chamber-title">📜 TEST HISTORY</div>
@@ -802,28 +927,49 @@ function resetDepositForm() {
 )}
 
 <div className="bottom-grid">
-  <button className="nav-card" onClick={() => {
-                                 playClick();
-                                 setPage("market");
-                               }}>
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("market");
+    }}
+  >
     <span className="nav-title">🏪 Market</span>
     <span className="muted">Buy new dragons</span>
   </button>
 
-  <button className="nav-card" onClick={() => {
-                                 playClick();
-                                 setPage("deposit");
-                               }}>
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("deposit");
+    }}
+  >
     <span className="nav-title">➕ Deposit</span>
     <span className="muted">Load USDT</span>
   </button>
 
-  <button className="nav-card" onClick={() => {
-                                 playClick();
-                                 setPage("withdraw");
-                               }}>
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("withdraw");
+    }}
+  >
     <span className="nav-title">💸 Withdraw</span>
     <span className="muted">Cash out USDT</span>
+  </button>
+
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("leaderboard");
+      loadLeaderboard();
+    }}
+  >
+    <span className="nav-title">🏆 Leaderboard</span>
+    <span className="muted">Top players</span>
   </button>
 </div>
 
