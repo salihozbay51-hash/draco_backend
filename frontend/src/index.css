@@ -43,6 +43,7 @@ button {
 
 .hero-card {
   padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 .hero-top {
@@ -69,7 +70,8 @@ button {
 }
 
 .stat-badge {
-  background: #1e293b;
+  background: linear-gradient(180deg, #1b2a3d 0%, #0f172a 100%);
+  border: 1px solid #3a4a5f;
   border-radius: 18px;
   padding: 10px 14px;
   min-width: 90px;
@@ -199,13 +201,25 @@ button {
 
 .bottom-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
 }
 
 @media (max-width: 480px) {
   .bottom-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .bottom-nav .nav-card {
+    padding: 12px 8px;
+  }
+
+  .bottom-nav .nav-title {
+    font-size: 14px;
+  }
+
+  .bottom-nav .muted {
+    font-size: 11px;
   }
 }
 
@@ -367,4 +381,78 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.app-content {
+  padding-bottom: 110px;
+}
+
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings-row {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.small-control-btn {
+  border: 1px solid #3a4a5f;
+  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  color: #f3e7c2;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.language-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lang-btn {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: white;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.lang-btn-active {
+  border-color: #f3d38b;
+  color: #f3d38b;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 440px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid #2f3f56;
+  border-radius: 20px;
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+}
+
+.bottom-nav .nav-card {
+  min-height: 84px;
 }

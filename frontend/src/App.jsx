@@ -552,52 +552,58 @@ function resetDepositForm() {
 
   return (
     <div className="app-shell">
-      <div className="container">
+      <div className="container app-content">
         <div className="card hero-card">
-  <div className="hero-top">
-    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-  <button
-    className="nav-card"
-    onClick={() => setMusicOn((prev) => !prev)}
-  >
-    {musicOn ? t("musicOn") : t("musicOff")}
-  </button>
-
-  <button
-    className="nav-card"
-    onClick={() => setSfxOn((prev) => !prev)}
-  >
-    {sfxOn ? t("clickOn") : t("clickOff")}
-  </button>
-</div>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-  {languageOptions.map((item) => (
-    <button
-      key={item.code}
-      className="nav-card"
-      style={{
-        padding: "10px 12px",
-        border: lang === item.code ? "1px solid #facc15" : "1px solid #1e293b",
-      }}
-      onClick={() => {
-        playClick();
-        handleChangeLanguage(item.code);
-      }}
-    >
-      {item.flag} {item.code.toUpperCase()}
-    </button>
-  ))}
-</div>
+  <div className="hero-header">
     <div>
       <p className="muted">🐉 {t("appName")}</p>
       <h1>{playerName}</h1>
       <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
     </div>
+
+    <div className="stat-badge">
+      <span className="tiny">{t("activeDragons")}</span>
+      <strong>{activeCount}</strong>
+    </div>
   </div>
 
-  <div className="stat-badge">
-    <span className="tiny">{t("activeDragons")}</span>
-    <strong>{activeCount}</strong>
+  <div className="settings-row">
+    <div className="settings-group">
+      <button
+        className="small-control-btn"
+        onClick={() => {
+          playClick();
+          setMusicOn((prev) => !prev);
+        }}
+      >
+        {musicOn ? t("musicOn") : t("musicOff")}
+      </button>
+
+      <button
+        className="small-control-btn"
+        onClick={() => {
+          playClick();
+          setSfxOn((prev) => !prev);
+        }}
+      >
+        {sfxOn ? t("clickOn") : t("clickOff")}
+      </button>
+    </div>
+
+    <div className="language-row">
+      {languageOptions.map((item) => (
+        <button
+          key={item.code}
+          className={`lang-btn ${lang === item.code ? "lang-btn-active" : ""}`}
+          onClick={() => {
+            playClick();
+            handleChangeLanguage(item.code);
+          }}
+        >
+          {item.flag} {item.code.toUpperCase()}
+        </button>
+      ))}
+    </div>
   </div>
 </div>
 
@@ -1038,7 +1044,7 @@ function resetDepositForm() {
   </div>
 )}
 
-<div className="bottom-grid">
+<div className="bottom-grid bottom-nav">
   <button
     className="nav-card"
     onClick={() => {
