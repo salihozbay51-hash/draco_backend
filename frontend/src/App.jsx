@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { getSavedLanguage, saveLanguage, translate, languageOptions } from "./i18n";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
 
@@ -36,9 +37,16 @@ export default function App() {
   const [musicOn, setMusicOn] = useState(true);
   const [sfxOn, setSfxOn] = useState(true);
   const bgmRef = useRef(null);
+  const t = (key) => translate(lang, key);
+
+function handleChangeLanguage(nextLang) {
+  setLang(nextLang);
+  saveLanguage(nextLang);
+}
   const [leaderboard, setLeaderboard] = useState([]);
   const [myRank, setMyRank] = useState(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [lang, setLang] = useState("tr");
 
   function maskTelegramId(id) {
   if (!id) return "Unknown";
@@ -429,6 +437,19 @@ function resetDepositForm() {
   setDepositAmount("");
   setDepositOrder(null);
 }
+  
+  function resetDepositForm() {
+  setDepositAmount("");
+  setDepositOrder(null);
+}
+
+  useEffect(() => {
+    setLang(getSavedLanguage());
+  }, []);
+
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+  }, []);
 
   useEffect(() => {
   const tg = window.Telegram?.WebApp;
@@ -500,25 +521,43 @@ function resetDepositForm() {
     className="nav-card"
     onClick={() => setMusicOn((prev) => !prev)}
   >
-    {musicOn ? "🎵 Music On" : "🎵 Music Off"}
+    {musicOn ? t("musicOn") : t("musicOff")}
   </button>
 
   <button
     className="nav-card"
     onClick={() => setSfxOn((prev) => !prev)}
   >
-    {sfxOn ? "🔘 Click On" : "🔘 Click Off"}
+    {sfxOn ? t("clickOn") : t("clickOff")}
   </button>
 </div>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+  {languageOptions.map((item) => (
+    <button
+      key={item.code}
+      className="nav-card"
+      style={{
+        padding: "10px 12px",
+        border: lang === item.code ? "1px solid #facc15" : "1px solid #1e293b",
+      }}
+      onClick={() => {
+        playClick();
+        handleChangeLanguage(item.code);
+      }}
+    >
+      {item.flag} {item.code.toUpperCase()}
+    </button>
+  ))}
+</div>
     <div>
-      <p className="muted">🐉 Draco Kingdom</p>
+      <p className="muted">🐉 {t("appName")}</p>
       <h1>{playerName}</h1>
       <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
     </div>
   </div>
 
   <div className="stat-badge">
-    <span className="tiny">Active Dragons</span>
+    <span className="tiny">{t("activeDragons")}</span>
     <strong>{activeCount}</strong>
   </div>
 </div>
@@ -531,15 +570,15 @@ function resetDepositForm() {
         <>
           <div className="stats-grid">
             <div className="stat-card">
-              <p className="muted">🥚 Eggs</p>
+              <p className="muted">{t("eggs")}</p>
               <h2>{profile?.total_eggs_ay ?? 0}</h2>
-              <p className="tiny">Stored: {profile?.stored_eggs_ay ?? 0}</p>
+              <p className="tiny">{t("stored")}: {profile?.stored_eggs_ay ?? 0}</p>
             </div>
 
             <div className="stat-card">
-              <p className="muted">💰 USDT</p>
+              <p className="muted">{t("usdt")}</p>
               <h2>{profile?.usdt_balance ?? 0}</h2>
-              <p className="tiny">Pending eggs: {profile?.pending_eggs_ay ?? 0}</p>
+              <p className="tiny">{t("pendingEggs")}: {profile?.pending_eggs_ay ?? 0}</p>
             </div>
           </div>
 
@@ -551,7 +590,7 @@ function resetDepositForm() {
             }}
             disabled={collecting}
           >
-            {collecting ? "Collecting..." : "Collect Eggs"}
+            {collecting ? t("collecting") : t("collectEggs")}
           </button>
 
           <button
@@ -563,7 +602,7 @@ function resetDepositForm() {
             }}
             disabled={converting}
           >
-            {converting ? "Converting..." : "Convert Eggs → USDT"}
+            {converting ? t("converting") : t("convertEggs")}
           </button>
 
           <p className="tiny" style={{ marginTop: 8 }}>
@@ -571,7 +610,7 @@ function resetDepositForm() {
           </p>
 
           <p className="tiny last-collect">
-            Last collect: {formatDate(profile?.last_collect_at ?? null)}
+            {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
           </p>
         </>
       )}
@@ -838,12 +877,12 @@ function resetDepositForm() {
 
     {page === "leaderboard" && (
   <div className="dragon-chamber">
-    <div className="chamber-title">🏆 Leaderboard</div>
+    <div className="chamber-title">{t("leaderboardTitle")}</div>
 
     {leaderboardLoading ? (
-      <div className="tiny">Leaderboard yükleniyor...</div>
+      <div className="tiny">{t("loadingLeaderboard")}</div>
     ) : leaderboard.length === 0 ? (
-      <div className="tiny">Henüz oyuncu yok</div>
+      <div className="tiny">{t("noPlayersYet")}</div>
     ) : (
       <div style={{ display: "grid", gap: 10 }}>
         {leaderboard.map((player) => (
@@ -883,9 +922,9 @@ function resetDepositForm() {
               </div>
 
               <div style={{ textAlign: "right" }}>
-                <div className="tiny">Power</div>
+                <div className="tiny">{t("power")}</div>
                 <strong>{player.total_power}</strong>
-                <div className="tiny">{player.dragon_count} dragons</div>
+                <div className="tiny">{player.dragon_count} {t("dragons")}</div>
               </div>
             </div>
           </div>
@@ -898,7 +937,7 @@ function resetDepositForm() {
         className="dragon-card"
         style={{ marginTop: 14, border: "1px solid #facc15" }}
       >
-        <div className="tiny">Your Rank</div>
+        <div className="tiny">{t("yourRank")}</div>
         <strong>#{myRank.rank}</strong>
         <div className="tiny">Eggs: {myRank.eggs_ay}</div>
         <div className="tiny">USDT: {myRank.usdt_balance}</div>
@@ -916,7 +955,7 @@ function resetDepositForm() {
       }}
       disabled={leaderboardLoading}
     >
-      {leaderboardLoading ? "Refreshing..." : "Refresh Leaderboard"}
+      {t("refreshLeaderboard")}
     </button>
 
     <button
@@ -940,8 +979,8 @@ function resetDepositForm() {
       setPage("market");
     }}
   >
-    <span className="nav-title">🏪 Market</span>
-    <span className="muted">Buy new dragons</span>
+    <span className="nav-title">{t("market")}</span>
+    <span className="muted">{t("buyNewDragons")}</span>
   </button>
 
   <button
@@ -951,8 +990,8 @@ function resetDepositForm() {
       setPage("deposit");
     }}
   >
-    <span className="nav-title">➕ Deposit</span>
-    <span className="muted">Load USDT</span>
+    <span className="nav-title">{t("deposit")}</span>
+    <span className="muted">{t("loadUsdt")}</span>
   </button>
 
   <button
@@ -962,8 +1001,8 @@ function resetDepositForm() {
       setPage("withdraw");
     }}
   >
-    <span className="nav-title">💸 Withdraw</span>
-    <span className="muted">Cash out USDT</span>
+    <span className="nav-title">{t("withdraw")}</span>
+    <span className="muted">{t("cashOutUsdt")}</span>
   </button>
 
   <button
@@ -974,8 +1013,8 @@ function resetDepositForm() {
       loadLeaderboard();
     }}
   >
-    <span className="nav-title">🏆 Leaderboard</span>
-    <span className="muted">Top players</span>
+    <span className="nav-title">{t("leaderboard")}</span>
+    <span className="muted">{t("topPlayers")}</span>
   </button>
 </div>
 
@@ -984,8 +1023,8 @@ function resetDepositForm() {
     {/* INVITE LINK */}
     <div className="card">
       <div className="section-head">
-        <h3>Invite Friends</h3>
-        <span className="muted">Referral Link</span>
+        <h3>{t("inviteFriends")}</h3>
+        <span className="muted">{t("referralLink")}</span>
       </div>
       <input
         value={inviteLink}
@@ -1007,30 +1046,30 @@ function resetDepositForm() {
           }
         }}
       >
-        Copy Link
+        {t("copyLink")}
       </button>
     </div>
 
     {/* REFERRAL STATS */}
     <div className="card">
       <div className="section-head">
-        <h3>Referrals</h3>
-        <span className="muted">3 Levels</span>
+        <h3>{t("referrals")}</h3>
+        <span className="muted">{t("threeLevels")}</span>
       </div>
 
       <div className="stats-grid">
         <div className="stat-card">
-          <p className="muted">Level 1</p>
+          <p className="muted">{t("level1")}</p>
           <h2>{refs.level1}</h2>
         </div>
 
         <div className="stat-card">
-          <p className="muted">Level 2</p>
+          <p className="muted">{t("level2")}</p>
           <h2>{refs.level2}</h2>
         </div>
 
         <div className="stat-card">
-          <p className="muted">Level 3</p>
+          <p className="muted">{t("level3")}</p>
           <h2>{refs.level3}</h2>
         </div>
       </div>
