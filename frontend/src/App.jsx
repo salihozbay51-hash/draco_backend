@@ -15,6 +15,45 @@ function formatDate(value) {
   return d.toLocaleString();
 }
 
+const dragonVisualMap = {
+  minik: {
+    icon: "🥚",
+    title: "Minik Dragon",
+    accent: "#94a3b8",
+    bg: "linear-gradient(135deg, #1e293b, #0f172a)",
+  },
+  cirak: {
+    icon: "🐉",
+    title: "Çırak Dragon",
+    accent: "#22c55e",
+    bg: "linear-gradient(135deg, #123524, #0f172a)",
+  },
+  bronz: {
+    icon: "🔥",
+    title: "Bronz Dragon",
+    accent: "#f97316",
+    bg: "linear-gradient(135deg, #3b1d12, #0f172a)",
+  },
+  gumus: {
+    icon: "❄️",
+    title: "Gümüş Dragon",
+    accent: "#60a5fa",
+    bg: "linear-gradient(135deg, #10263b, #0f172a)",
+  },
+  altin: {
+    icon: "👑",
+    title: "Altın Dragon",
+    accent: "#facc15",
+    bg: "linear-gradient(135deg, #3b3210, #0f172a)",
+  },
+  efsane: {
+    icon: "🌌",
+    title: "Efsane Dragon",
+    accent: "#a855f7",
+    bg: "linear-gradient(135deg, #2a123b, #0f172a)",
+  },
+};
+
 export default function App() {
   const [telegramId, setTelegramId] = useState("");
   const [playerName, setPlayerName] = useState("Dragon Master");
@@ -616,34 +655,62 @@ function resetDepositForm() {
       )}
 
       {page === "home" && (
-        <>
-          <div className="dragon-chamber">
-            <div className="chamber-title">🔥 Dragon Chamber</div>
+  <>
+    <div className="dragon-chamber">
+      <div className="chamber-title">🔥 Dragon Chamber</div>
 
-            <div className="dragon-grid">
-              {profile?.dragons?.length ? (
-                profile.dragons.map((dragon) => (
-                  <div key={dragon.id} className="dragon-card">
-                    <strong>🐉 {prettyCode(dragon.dragon_code)}</strong>
+      <div className="dragon-grid">
+        {profile?.dragons?.length ? (
+          profile.dragons.map((dragon) => {
+            const visual = dragonVisualMap[dragon.dragon_code] || {
+              icon: "🐲",
+              title: prettyCode(dragon.dragon_code),
+              accent: "#b8924a",
+              bg: "linear-gradient(135deg, #132235, #0f172a)",
+            };
 
-                    <div className="muted">Level {dragon.level}</div>
+            return (
+              <div
+                key={dragon.id}
+                className="dragon-card fantasy-dragon-card"
+                style={{
+                  borderColor: visual.accent,
+                  background: visual.bg,
+                }}
+              >
+                <div className="dragon-card-top">
+                  <div
+                    className="dragon-icon-wrap"
+                    style={{ borderColor: visual.accent }}
+                  >
+                    <span className="dragon-icon">{visual.icon}</span>
+                  </div>
 
-                    <div className="tiny">
-                      🥚 {dragon.eggs_per_day} eggs/day
+                  <div className="dragon-meta">
+                    <div
+                      className="dragon-title"
+                      style={{ color: visual.accent }}
+                    >
+                      {visual.title}
                     </div>
+                    <div className="tiny">Level {dragon.level}</div>
+                  </div>
+                </div>
 
-                    <div className="tiny">
-                      ⏳ {dragon.remaining_days} days left
-                    </div>
-                   </div>
-                 ))
-               ) : (
-                 <div className="tiny">Henüz dragonun yok 🐣</div>
-               )}
-             </div>
-          </div>
-        </>
-      )}
+                <div className="dragon-stats">
+                  <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
+                  <div className="tiny">⏳ {dragon.remaining_days} days left</div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="tiny">Henüz dragonun yok 🐣</div>
+        )}
+      </div>
+    </div>
+  </>
+)}
 
       {page === "market" && (
         <div className="dragon-chamber">

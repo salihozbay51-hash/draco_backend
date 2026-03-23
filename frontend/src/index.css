@@ -7,7 +7,7 @@ html, body, #root {
   padding: 0;
   min-height: 100%;
   font-family: Arial, Helvetica, sans-serif;
-  background: #020617;
+  background: radial-gradient(circle at top, #122033 0%, #08111b 45%, #020617 100%);
   color: white;
 }
 
@@ -34,8 +34,8 @@ button {
 }
 
 .card {
-  background: #0f172a;
-  border: 1px solid #1e293b;
+  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  border: 1px solid #2f3f56;
   border-radius: 24px;
   padding: 18px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
@@ -104,7 +104,8 @@ button {
 }
 
 .stat-card {
-  background: #1e293b;
+  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  border: 1px solid #334155;
   border-radius: 18px;
   padding: 14px;
 }
@@ -117,14 +118,20 @@ button {
 .collect-btn {
   margin-top: 18px;
   width: 100%;
-  border: none;
+  border: 1px solid #b8924a;
   border-radius: 18px;
   padding: 16px;
   font-weight: 700;
-  font-size: 16px;
-  background: #22c55e;
-  color: #052e16;
+  font-size: 18px;
+  background: linear-gradient(135deg, #2d6f4f, #1f5c40);
+  color: #f3e7c2;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.collect-btn:active {
+  transform: scale(0.97);
 }
 
 .collect-btn:disabled {
@@ -203,13 +210,14 @@ button {
 }
 
 .nav-card {
-  border: 1px solid #1e293b;
-  background: #0f172a;
-  border-radius: 18px;
+  border: 1px solid #3a4a5f;
+  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  border-radius: 16px;
   padding: 16px;
   text-align: left;
   color: white;
   cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .nav-title {
@@ -306,8 +314,57 @@ body {
 }
 
 .chamber-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
   margin-bottom: 12px;
-  color: #facc15;
+  color: #f3d38b;
+  text-align: center;
+}
+
+.fantasy-dragon-card {
+  border: 1px solid #b8924a;
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.dragon-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dragon-icon-wrap {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 14px;
+  border: 1px solid #b8924a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dragon-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.dragon-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dragon-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dragon-stats {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
