@@ -933,6 +933,53 @@ function resetDepositForm() {
   </div>
 )}
 
+<div className="bottom-grid">
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("market");
+    }}
+  >
+    <span className="nav-title">🏪 Market</span>
+    <span className="muted">Buy new dragons</span>
+  </button>
+
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("deposit");
+    }}
+  >
+    <span className="nav-title">➕ Deposit</span>
+    <span className="muted">Load USDT</span>
+  </button>
+
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("withdraw");
+    }}
+  >
+    <span className="nav-title">💸 Withdraw</span>
+    <span className="muted">Cash out USDT</span>
+  </button>
+
+  <button
+    className="nav-card"
+    onClick={() => {
+      playClick();
+      setPage("leaderboard");
+      loadLeaderboard();
+    }}
+  >
+    <span className="nav-title">🏆 Leaderboard</span>
+    <span className="muted">Top players</span>
+  </button>
+</div>
+
 {refs && (
   <div className="card">
     <div className="section-head">
