@@ -103,11 +103,11 @@ function handleChangeLanguage(nextLang) {
   }
 
   function getAuthHeaders(extra = {}) {
-  return {
-    ...extra,
-    "X-Telegram-Init-Data": tgInitData,
-  };
-}
+    return {
+      ...extra,
+      "X-Telegram-Init-Data": tgInitData,
+    };
+  }
 
   async function ensureRegistered(id) {
   const res = await fetch(`${API_BASE}/users/register`, {
@@ -1142,12 +1142,17 @@ function resetDepositForm() {
         </div>
 
         <div className="stat-card">
-          <p className="muted">{t("level3")}</p>
-          <h2>{refs.level3}</h2>
-        </div>
+  <p className="muted">{t("level3")}</p>
+  <h2>{refs.level3}</h2>
+</div>
       </div>
     </div>
   </>
 )}
-</>
-)}
+
+        </>
+      )}
+    </div>
+  </div>
+);
+}
