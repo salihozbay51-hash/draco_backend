@@ -5,6 +5,7 @@ import bronzImg from "./assets/dragons/bronz.png";
 import gumusImg from "./assets/dragons/gumus.png";
 import altinImg from "./assets/dragons/altin.png";
 import efsaneImg from "./assets/dragons/efsane.png";
+import bgImage from "./assets/backgrounds/background.webp";
 import { getSavedLanguage, saveLanguage, translate, languageOptions } from "./i18n";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
@@ -586,7 +587,10 @@ function resetDepositForm() {
     : "";
 
   return (   
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={{ backgroundImage: `url(${bgImage})` }}
+    >
       <div className="floating-rewards">
   {floatingRewards.map((r) => (
     <div key={r.id} className="floating-reward">
