@@ -599,11 +599,13 @@ function resetDepositForm() {
   ))}
 </div>
       <div className="container app-content">
+   {page === "home" && (
+      <>
         <div className="card hero-card">
   <div className="hero-header">
     <div>
       <p className="muted">🐉 {t("appName")}</p>
-      <h1>{playerName}</h1>
+      <h1>{playerName && playerName !== "." ? playerName : "Dragon Master"}</h1>
       <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
     </div>
 
@@ -715,8 +717,7 @@ function resetDepositForm() {
          </div>
        </div>
 
-      {page === "home" && (
-  <>
+
     <div className="dragon-chamber">
       <div className="section-title-main">🔥 Dragon Chamber</div>
 
@@ -1126,52 +1127,7 @@ function resetDepositForm() {
   </div>
 )}
 
-<div className="bottom-grid bottom-nav">
-  <button
-    className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
-    onClick={() => {
-    playClick();
-    setPage("market");
-  }}
->
-    <span className="nav-title">{t("market")}</span>
-    <span className="muted">{t("buyNewDragons")}</span>
-  </button>
 
-  <button
-    className={`nav-card ${page === "deposit" ? "nav-card-active" : ""}`}
-    onClick={() => {
-      playClick();
-      setPage("deposit");
-    }}
-  >
-    <span className="nav-title">{t("deposit")}</span>
-    <span className="muted">{t("loadUsdt")}</span>
-  </button>
-
-  <button
-    className={`nav-card ${page === "withdraw" ? "nav-card-active" : ""}`}
-    onClick={() => {
-      playClick();
-      setPage("withdraw");
-    }}
-  >
-    <span className="nav-title">{t("withdraw")}</span>
-    <span className="muted">{t("cashOutUsdt")}</span>
-  </button>
-
-  <button
-    className={`nav-card ${page === "leaderboard" ? "nav-card-active" : ""}`}
-    onClick={() => {
-      playClick();
-      setPage("leaderboard");
-      loadLeaderboard();
-    }}
-  >
-    <span className="nav-title">{t("leaderboard")}</span>
-    <span className="muted">{t("topPlayers")}</span>
-  </button>
-</div>
 
 {page === "home" && refs && (
   <>
@@ -1231,7 +1187,52 @@ function resetDepositForm() {
     </div>
   </>
 )}
+<div className="bottom-grid bottom-nav">
+  <button
+    className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
+    onClick={() => {
+    playClick();
+    setPage("market");
+  }}
+>
+    <span className="nav-title">{t("market")}</span>
+    <span className="muted">{t("buyNewDragons")}</span>
+  </button>
 
+  <button
+    className={`nav-card ${page === "deposit" ? "nav-card-active" : ""}`}
+    onClick={() => {
+      playClick();
+      setPage("deposit");
+    }}
+  >
+    <span className="nav-title">{t("deposit")}</span>
+    <span className="muted">{t("loadUsdt")}</span>
+  </button>
+
+  <button
+    className={`nav-card ${page === "withdraw" ? "nav-card-active" : ""}`}
+    onClick={() => {
+      playClick();
+      setPage("withdraw");
+    }}
+  >
+    <span className="nav-title">{t("withdraw")}</span>
+    <span className="muted">{t("cashOutUsdt")}</span>
+  </button>
+
+  <button
+    className={`nav-card ${page === "leaderboard" ? "nav-card-active" : ""}`}
+    onClick={() => {
+      playClick();
+      setPage("leaderboard");
+      loadLeaderboard();
+    }}
+  >
+    <span className="nav-title">{t("leaderboard")}</span>
+    <span className="muted">{t("topPlayers")}</span>
+  </button>
+</div>
         </>
       )}
     </div>
