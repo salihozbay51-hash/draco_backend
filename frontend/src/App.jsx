@@ -1,4 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import minikImg from "./assets/dragons/minik.png";
+import cirakImg from "./assets/dragons/cirak.png";
+import bronzImg from "./assets/dragons/bronz.png";
+import gumusImg from "./assets/dragons/gumus.png";
+import altinImg from "./assets/dragons/altin.png";
+import efsaneImg from "./assets/dragons/efsane.png";
 import { getSavedLanguage, saveLanguage, translate, languageOptions } from "./i18n";
 
 const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
@@ -14,6 +20,15 @@ function formatDate(value) {
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString();
 }
+
+const dragonImages = {
+  minik: minikImg,
+  cirak: cirakImg,
+  bronz: bronzImg,
+  gumus: gumusImg,
+  altin: altinImg,
+  efsane: efsaneImg,
+};
 
 const dragonVisualMap = {
   minik: {
@@ -722,10 +737,14 @@ function resetDepositForm() {
               >
                 <div className="dragon-card-top">
                   <div
-                    className="dragon-icon-wrap"
+                    className="dragon-image-wrap"
                     style={{ borderColor: visual.accent }}
                   >
-                    <span className="dragon-icon">{visual.icon}</span>
+                    <img
+                      src={dragonImages[dragon.dragon_code] || minikImg}
+                      alt={visual.title}
+                      className="dragon-img"
+                    />
                   </div>
 
                   <div className="dragon-meta">
@@ -765,12 +784,24 @@ function resetDepositForm() {
                 className="dragon-card fantasy-dragon-card market-card"
               >
                 <div className="market-card-top">
-                  <div className="market-card-title">
-                    🐉 {prettyCode(dragon.code)}
-                  </div>
+                  <div className="market-dragon-head">
+                    <div className="market-dragon-image-wrap">
+                      <img
+                        src={dragonImages[dragon.code] || minikImg}
+                        alt={prettyCode(dragon.code)}
+                        className="dragon-img"
+                      />
+                    </div>
 
-                  <div className="market-price">
-                    💰 {dragon.price_usdt} USDT
+                    <div>
+                      <div className="market-card-title">
+                       {prettyCode(dragon.code)}
+                      </div>
+
+                      <div className="market-price">
+                        💰 {dragon.price_usdt} USDT
+                      </div>
+                    </div>
                   </div>
                 </div>
 

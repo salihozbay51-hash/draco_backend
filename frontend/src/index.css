@@ -713,3 +713,43 @@ body {
 .nav-card-active .nav-title {
   color: #f3d38b;
 }
+
+.dragon-image-wrap {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 16px;
+  border: 1px solid #b8924a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+  overflow: hidden;
+}
+
+.dragon-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
+}
+
+.market-dragon-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.market-dragon-image-wrap {
+  width: 68px;
+  height: 68px;
+  min-width: 68px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
