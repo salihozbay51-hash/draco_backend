@@ -600,7 +600,7 @@ function resetDepositForm() {
 </div>
       <div className="container app-content">
    {page === "home" && (
-      <>
+     <>
         <div className="card hero-card">
   <div className="hero-header">
     <div>
@@ -1127,9 +1127,7 @@ function resetDepositForm() {
   </div>
 )}
 
-
-
-{page === "home" && refs && (
+{refs && (
   <>
     {/* INVITE LINK */}
     <div className="card">
@@ -1187,6 +1185,8 @@ function resetDepositForm() {
     </div>
   </>
 )}
+  </>
+)}
 <div className="bottom-grid bottom-nav">
   <button
     className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
@@ -1233,8 +1233,7 @@ function resetDepositForm() {
     <span className="muted">{t("topPlayers")}</span>
   </button>
 </div>
-        </>
-      )}
+
     </div>
   </div>
 );
