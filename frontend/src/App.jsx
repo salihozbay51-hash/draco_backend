@@ -1169,7 +1169,7 @@ function resetDepositForm() {
   </button>
 </div>
 
-{refs && (
+{page === "home" && refs && (
   <>
     {/* INVITE LINK */}
     <div className="card">

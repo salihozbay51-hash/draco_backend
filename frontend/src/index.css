@@ -42,8 +42,8 @@ button {
 }
 
 .hero-card {
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .hero-top {
@@ -53,20 +53,24 @@ button {
   align-items: flex-start;
 }
 
-.hero-top h1 {
-  margin: 6px 0 0;
-  font-size: 28px;
+.hero-top h1,
+.hero-header h1 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.1;
 }
 
 .muted {
   color: #94a3b8;
   margin: 0;
+  line-height: 1.25;
 }
 
 .tiny {
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   margin: 0;
+  line-height: 1.25;
 }
 
 .stat-badge {
@@ -109,22 +113,23 @@ button {
   background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
   border: 1px solid #334155;
   border-radius: 18px;
-  padding: 14px;
+  padding: 12px;
 }
 
 .stat-card h2 {
-  margin: 6px 0;
-  font-size: 28px;
+  margin: 4px 0;
+  font-size: 24px;
+  line-height: 1.1;
 }
 
 .collect-btn {
-  margin-top: 18px;
+  margin-top: 14px;
   width: 100%;
   border: 1px solid #b8924a;
   border-radius: 18px;
-  padding: 16px;
+  padding: 14px;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 16px;
   background: linear-gradient(135deg, #2d6f4f, #1f5c40);
   color: #f3e7c2;
   cursor: pointer;
@@ -231,15 +236,17 @@ button {
   }
 
   .bottom-nav .nav-card {
-    padding: 12px 8px;
+    padding: 10px 6px;
   }
 
   .bottom-nav .nav-title {
-    font-size: 14px;
+    font-size: 12px;
+    line-height: 1.1;
   }
 
   .bottom-nav .muted {
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.15;
   }
 }
 
@@ -358,10 +365,8 @@ body {
 .fantasy-dragon-card {
   border: 1px solid #b8924a;
   border-radius: 18px;
-  padding: 14px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
-  transition: transform 0.12s ease, border-color 0.12s ease;
-}
+  padding: 12px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);}
 
 .fantasy-dragon-card:hover {
   transform: translateY(-2px);
@@ -397,33 +402,34 @@ body {
 }
 
 .dragon-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 1.15;
 }
 
 .dragon-stats {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .app-content {
-  padding-bottom: 110px;
+  padding-bottom: 92px;
 }
 
 .hero-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
 }
 
 .settings-row {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .settings-group {
@@ -466,20 +472,17 @@ body {
 .bottom-nav {
   position: fixed;
   left: 50%;
-  bottom: 12px;
+  bottom: 10px;
   transform: translateX(-50%);
-  width: calc(100% - 24px);
+  width: calc(100% - 20px);
   max-width: 440px;
   background: rgba(15, 23, 42, 0.96);
   border: 1px solid #2f3f56;
-  border-radius: 20px;
-  padding: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  z-index: 20;
-}
+  border-radius: 18px;
+  padding: 8px;}
 
 .bottom-nav .nav-card {
-  min-height: 84px;
+  min-height: 72px;
 }
 
 .resource-grid {
@@ -493,7 +496,7 @@ body {
 }
 
 .resource-card {
-  min-height: 120px;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -504,7 +507,7 @@ body {
   background: linear-gradient(180deg, #16283d 0%, #0f172a 100%);
   border: 1px solid #b8924a;
   border-radius: 20px;
-  padding: 16px;
+  padding: 14px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
@@ -512,12 +515,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .main-action-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #f3d38b;
 }
@@ -539,13 +542,13 @@ body {
 }
 
 .convert-btn {
-  margin-top: 12px;
+  margin-top: 10px;
   width: 100%;
   border: 1px solid #b8924a;
   border-radius: 18px;
-  padding: 14px;
+  padding: 12px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 15px;
   background: linear-gradient(135deg, #b68a2f, #8e6a21);
   color: #fff4d6;
   cursor: pointer;
@@ -715,9 +718,9 @@ body {
 }
 
 .dragon-image-wrap {
-  width: 72px;
-  height: 72px;
-  min-width: 72px;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
   border-radius: 16px;
   border: 1px solid #b8924a;
   display: flex;
@@ -728,8 +731,8 @@ body {
 }
 
 .dragon-img {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
   display: block;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.28));
