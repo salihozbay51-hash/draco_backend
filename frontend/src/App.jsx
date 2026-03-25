@@ -685,6 +685,34 @@ function resetDepositForm() {
   </button>
 </div>
 
+<div className="dragon-bottom-actions">
+  <button
+    className="bottom-action-btn collect-bottom-btn"
+    onClick={() => {
+      playClick();
+      handleCollect();
+    }}
+    disabled={collecting}
+  >
+    {collecting ? t("collecting") : "Yumurtaları Topla"}
+  </button>
+
+  <button
+    className="bottom-action-btn convert-bottom-btn"
+    onClick={() => {
+      playClick();
+      handleConvert();
+    }}
+    disabled={converting}
+  >
+    {converting ? t("converting") : "AY=USDT ÇEVİR"}
+  </button>
+</div>
+
+<div className="dragon-actions-foot tiny">
+  500 AY = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
+</div>
+
 <div className="dragon-actions-foot tiny">
   500 AY = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
 </div>

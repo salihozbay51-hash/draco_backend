@@ -1417,3 +1417,35 @@ body {
   text-align: center;
   color: #8ea0b6;
 }
+
+.dragon-bottom-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.bottom-action-btn {
+  border: none;
+  border-radius: 16px;
+  padding: 12px 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff7da;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.bottom-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.collect-bottom-btn {
+  background: linear-gradient(180deg, #36a96d, #247d52);
+}
+
+.convert-bottom-btn {
+  background: linear-gradient(180deg, #b88a2f, #8e6a21);
+  border: 1px solid rgba(226, 187, 95, 0.72);
+}
