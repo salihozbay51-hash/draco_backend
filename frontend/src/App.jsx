@@ -601,184 +601,180 @@ function resetDepositForm() {
 </div>
       <div className="container app-content">
    {page === "home" && (
-     <>
-        <div className="card hero-card">
-  <div className="hero-header">
-    <div>
-      <p className="muted">🐉 {t("appName")}</p>
-      <h1>{playerName && playerName !== "." ? playerName : "Dragon Master"}</h1>
-      <p className="tiny">Telegram ID: {telegramId || "yükleniyor..."}</p>
-    </div>
+  <>
+    {loading ? (
+      <div className="status-box">Profil yükleniyor...</div>
+    ) : error ? (
+      <div className="status-box error-box">{error}</div>
+    ) : (
+      <>
+        <div className="top-hud">
+          <div className="player-hud">
+            <div className="player-mini">{t("appName")}</div>
+            <h1>{playerName && playerName !== "." ? playerName : "Dragon Master"}</h1>
+            <p className="tiny">ID: {telegramId || "yükleniyor..."}</p>
+          </div>
 
-    <div className="stat-badge">
-      <span className="tiny">{t("activeDragons")}</span>
-      <strong>{activeCount}</strong>
-    </div>
-  </div>
+          <div className="hud-right">
+            <div className="dragon-badge-mini">
+              <span className="tiny">{t("activeDragons")}</span>
+              <strong>{activeCount}</strong>
+            </div>
 
-  <div className="settings-row">
-    <div className="settings-group">
-      <button
-        className="small-control-btn compact-toggle-btn"
-        onClick={() => {
-          playClick();
-          setMusicOn((prev) => !prev);
-        }}
-      >
-        {musicOn ? "🎵 ON" : "🎵 OFF"}
-      </button>
-
-      <button
-        className="small-control-btn compact-toggle-btn"
-        onClick={() => {
-          playClick();
-          setSfxOn((prev) => !prev);
-        }}
-      >
-        {sfxOn ? "🔘 ON" : "🔘 OFF"}
-      </button>
-    </div>
-
-    <div className="language-row">
-      <div className="language-row compact-language-row">
-        <button
-          className="small-control-btn lang-single-btn"
-          onClick={() => {
-            playClick();
-            const currentIndex = languageOptions.findIndex((item) => item.code === lang);
-            const nextIndex = (currentIndex + 1) % languageOptions.length;
-            handleChangeLanguage(languageOptions[nextIndex].code);
-          }}
-        >
-          🌐 {languageOptions.find((item) => item.code === lang)?.flag} {lang.toUpperCase()}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-      {loading ? (
-        <div className="status-box">Profil yükleniyor...</div>
-      ) : error ? (
-        <div className="status-box error-box">{error}</div>
-      ) : (
-        <>
-         <div className="action-panel">
-           <div className="stats-grid resource-grid">
-             <div className="stat-card resource-card">
-               <p className="muted">{t("eggs")}</p>
-               <h2>{profile?.total_eggs_ay ?? 0}</h2>
-               <p className="tiny">{t("stored")}: {profile?.stored_eggs_ay ?? 0}</p>
-             </div>
-
-             <div className="stat-card resource-card">
-               <p className="muted">{t("usdt")}</p>
-               <h2>{profile?.usdt_balance ?? 0}</h2>
-               <p className="tiny">{t("pendingEggs")}: {profile?.pending_eggs_ay ?? 0}</p>
-             </div>
-           </div>
-
-           <div className="main-action-box">
-             <div className="main-action-top">
-               <div>
-                 <div className="main-action-title">⚔️ Main Action</div>
-                 <div className="tiny">Collect production from your dragons</div>
-               </div>
-
-               <div className="pending-pill">
-                 +{profile?.pending_eggs_ay ?? 0} AY
-               </div>
-             </div>
-
-             <button
-               className="collect-btn main-collect-btn"
-               onClick={() => {
-                 playClick();
-                 handleCollect();
-              }}
-               disabled={collecting}
-             >
-               {collecting ? t("collecting") : t("collectEggs")}
-             </button>
-
-             <button
-               className="convert-btn"
-               onClick={() => {
-                 playClick();
-                 handleConvert();
-             }}
-             disabled={converting}
-           >
-             {converting ? t("converting") : t("convertEggs")}
-           </button>
-
-           <p className="tiny convert-note">500 eggs = 1 USDT</p>
-           <p className="tiny last-collect">
-             {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
-           </p>
-         </div>
-       </div>
-
-
-    <div className="dragon-chamber">
-      <div className="section-title-main">🔥 Dragon Chamber</div>
-
-      <div className="dragon-grid">
-        {profile?.dragons?.length ? (
-          profile.dragons.map((dragon) => {
-            const visual = dragonVisualMap[dragon.dragon_code] || {
-              icon: "🐲",
-              title: prettyCode(dragon.dragon_code),
-              accent: "#b8924a",
-              bg: "linear-gradient(135deg, #132235, #0f172a)",
-            };
-
-            return (
-              <div
-                key={dragon.id}
-                className="dragon-card fantasy-dragon-card"
-                style={{
-                  borderColor: visual.accent,
-                  background: visual.bg,
+            <div className="hud-controls">
+              <button
+                className="hud-icon-btn"
+                onClick={() => {
+                  playClick();
+                  setMusicOn((prev) => !prev);
                 }}
               >
-                <div className="dragon-card-top">
+                {musicOn ? "🎵" : "🔇"}
+              </button>
+
+              <button
+                className="hud-icon-btn"
+                onClick={() => {
+                  playClick();
+                  setSfxOn((prev) => !prev);
+                }}
+              >
+                {sfxOn ? "🔘" : "⚪"}
+              </button>
+
+              <button
+                className="hud-lang-btn"
+                onClick={() => {
+                  playClick();
+                  const currentIndex = languageOptions.findIndex((item) => item.code === lang);
+                  const nextIndex = (currentIndex + 1) % languageOptions.length;
+                  handleChangeLanguage(languageOptions[nextIndex].code);
+                }}
+              >
+                {languageOptions.find((item) => item.code === lang)?.flag} {lang.toUpperCase()}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="resource-hud-bar">
+          <div className="resource-pill">
+            <span className="resource-icon">🥚</span>
+            <div>
+              <div className="resource-label">{t("eggs")}</div>
+              <strong>{profile?.total_eggs_ay ?? 0}</strong>
+            </div>
+          </div>
+
+          <div className="resource-pill">
+            <span className="resource-icon">💰</span>
+            <div>
+              <div className="resource-label">USDT</div>
+              <strong>{profile?.usdt_balance ?? 0}</strong>
+            </div>
+          </div>
+
+          <div className="resource-pill pending-resource">
+            <span className="resource-icon">✨</span>
+            <div>
+              <div className="resource-label">{t("pendingEggs")}</div>
+              <strong>{profile?.pending_eggs_ay ?? 0}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="action-zone">
+          <div className="action-zone-head">
+            <div>
+              <div className="action-zone-title">⚔️ Main Action</div>
+              <div className="tiny">Collect production from your dragons</div>
+            </div>
+
+            <div className="action-zone-pending">
+              +{profile?.pending_eggs_ay ?? 0} AY
+            </div>
+          </div>
+
+          <button
+            className="collect-mega-btn"
+            onClick={() => {
+              playClick();
+              handleCollect();
+            }}
+            disabled={collecting}
+          >
+            {collecting ? t("collecting") : t("collectEggs")}
+          </button>
+
+          <button
+            className="convert-mini-btn"
+            onClick={() => {
+              playClick();
+              handleConvert();
+            }}
+            disabled={converting}
+          >
+            {converting ? t("converting") : t("convertEggs")}
+          </button>
+
+          <div className="action-zone-foot tiny">
+            500 eggs = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
+          </div>
+        </div>
+
+        <div className="dragon-stage">
+          <div className="dragon-stage-title">🔥 Dragon Chamber</div>
+
+          <div className="dragon-stage-grid">
+            {profile?.dragons?.length ? (
+              profile.dragons.map((dragon) => {
+                const visual = dragonVisualMap[dragon.dragon_code] || {
+                  icon: "🐲",
+                  title: prettyCode(dragon.dragon_code),
+                  accent: "#b8924a",
+                  bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
+                };
+
+                return (
                   <div
-                    className="dragon-image-wrap"
-                    style={{ borderColor: visual.accent }}
+                    key={dragon.id}
+                    className="dragon-slot"
+                    style={{
+                      borderColor: visual.accent,
+                      background: visual.bg,
+                    }}
                   >
-                    <img
-                      src={dragonImages[dragon.dragon_code] || minikImg}
-                      alt={visual.title}
-                      className="dragon-img"
-                    />
-                  </div>
+                    <div className="dragon-slot-top">
+                      <div className="dragon-slot-image-wrap" style={{ borderColor: visual.accent }}>
+                        <img
+                          src={dragonImages[dragon.dragon_code] || minikImg}
+                          alt={visual.title}
+                          className="dragon-slot-img"
+                        />
+                      </div>
 
-                  <div className="dragon-meta">
-                    <div
-                      className="dragon-title"
-                      style={{ color: visual.accent }}
-                    >
-                      {visual.title}
+                      <div className="dragon-slot-meta">
+                        <div className="dragon-slot-title" style={{ color: visual.accent }}>
+                          {visual.title}
+                        </div>
+                        <div className="tiny">Lv. {dragon.level}</div>
+                      </div>
                     </div>
-                    <div className="tiny">Level {dragon.level}</div>
-                  </div>
-                </div>
 
-                <div className="dragon-stats">
-                  <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
-                  <div className="tiny">⏳ {dragon.remaining_days} days left</div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="tiny">Henüz dragonun yok 🐣</div>
-        )}
-      </div>
-    </div>
-  </>
-)}
+                    <div className="dragon-slot-stats">
+                      <span>🥚 {dragon.eggs_per_day}/day</span>
+                      <span>⏳ {dragon.remaining_days}d</span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="tiny">Henüz dragonun yok 🐣</div>
+            )}
+          </div>
+        </div>
+      </>
+    )}
   </>
 )}
 
@@ -1131,7 +1127,7 @@ function resetDepositForm() {
   </div>
 )}
 
-{refs && (
+{false && refs && (
   <div className="card compact-card">
     <button
       className="secondary-btn compact-section-toggle"
