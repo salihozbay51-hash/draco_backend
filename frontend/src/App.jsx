@@ -305,7 +305,9 @@ async function loadProfile(id, silent = false) {
           : `Collect başarısız (${res.status})`
       );
     }
-
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred("medium");
+    }
     spawnReward(data?.added_eggs_ay ?? profile?.pending_eggs_ay ?? 0);
 
     await loadProfile(telegramId, true);
