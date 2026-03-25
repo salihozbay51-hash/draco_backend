@@ -48,18 +48,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     with open(WELCOME_IMAGE, "rb") as photo:
-    await update.message.reply_photo(
-        photo=photo,
-        caption=(
-    "🐉 *Draco Kingdom*\n\n"
-    "Merhaba Dragon Master!\n\n"
-    "Dragon satın al, altın yumurtalarını gerçek paraya dönüştür.\n"
-    "Arkadaşlarını davet et, kazancını katla.\n\n"
-    "👇 Oyuna başlamak için butona bas."
-),
-        parse_mode="Markdown",
-        reply_markup=reply_markup
-    )
+        await update.message.reply_photo(
+            photo=photo,
+            caption=(
+                "🐉 *Draco Kingdom*\n\n"
+                "Merhaba Dragon Master!\n\n"
+                "Dragon satın al, altın yumurtalarını gerçek paraya dönüştür.\n"
+                "Arkadaşlarını davet et, kazancını katla.\n\n"
+                "👇 Oyuna başlamak için butona bas."
+            ),
+            parse_mode="Markdown",
+            reply_markup=reply_markup
+        )
     
 def main():
     if not BOT_TOKEN:
