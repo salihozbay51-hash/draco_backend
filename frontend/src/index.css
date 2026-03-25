@@ -49,8 +49,8 @@ button {
 }
 
 .hero-card {
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
 }
 
 .hero-top {
@@ -62,9 +62,9 @@ button {
 
 .hero-top h1,
 .hero-header h1 {
-  margin: 4px 0 0;
-  font-size: 22px;
-  line-height: 1.1;
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.05;
 }
 
 .muted {
@@ -83,16 +83,16 @@ button {
 .stat-badge {
   background: linear-gradient(180deg, #1b2a3d 0%, #0f172a 100%);
   border: 1px solid #3a4a5f;
-  border-radius: 18px;
-  padding: 10px 14px;
-  min-width: 90px;
+  border-radius: 14px;
+  padding: 8px 10px;
+  min-width: 68px;
   text-align: right;
 }
 
 .stat-badge strong {
   display: block;
-  font-size: 22px;
-  margin-top: 4px;
+  font-size: 15px;
+  margin-top: 2px;
 }
 
 .status-box {
@@ -112,31 +112,31 @@ button {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .stat-card {
-  background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
+  background: linear-gradient(180deg, rgba(19,34,53,0.86) 0%, rgba(15,23,42,0.82) 100%);
   border: 1px solid #334155;
-  border-radius: 18px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 10px;
 }
 
 .stat-card h2 {
-  margin: 4px 0;
-  font-size: 24px;
-  line-height: 1.1;
+  margin: 2px 0;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .collect-btn {
-  margin-top: 14px;
+  margin-top: 10px;
   width: 100%;
   border: 1px solid #b8924a;
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 10px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
   background: linear-gradient(135deg, #2d6f4f, #1f5c40);
   color: #f3e7c2;
   cursor: pointer;
@@ -435,10 +435,10 @@ body {
 }
 
 .settings-row {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .settings-group {
@@ -451,10 +451,12 @@ body {
   border: 1px solid #3a4a5f;
   background: linear-gradient(180deg, #132235 0%, #0f172a 100%);
   color: #f3e7c2;
-  border-radius: 14px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 6px 10px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 12px;
+  min-height: 32px;
 }
 
 .language-row {
@@ -505,19 +507,21 @@ body {
 }
 
 .resource-card {
-  min-height: 100px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   border-color: #3a4a5f;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .main-action-box {
-  background: linear-gradient(180deg, #16283d 0%, #0f172a 100%);
-  border: 1px solid #b8924a;
-  border-radius: 20px;
-  padding: 14px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  background: linear-gradient(180deg, rgba(22,40,61,0.82) 0%, rgba(15,23,42,0.78) 100%);
+  border: 1px solid rgba(184, 146, 74, 0.85);
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .main-action-top {
@@ -529,7 +533,7 @@ body {
 }
 
 .main-action-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #f3d38b;
 }
@@ -539,8 +543,8 @@ body {
   background: rgba(45, 111, 79, 0.18);
   color: #9ee6b8;
   border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 5px 9px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   box-shadow: inset 0 0 0 1px rgba(158, 230, 184, 0.05);
@@ -551,13 +555,13 @@ body {
 }
 
 .convert-btn {
-  margin-top: 10px;
+  margin-top: 8px;
   width: 100%;
   border: 1px solid #b8924a;
-  border-radius: 18px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 10px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   background: linear-gradient(135deg, #b68a2f, #8e6a21);
   color: #fff4d6;
   cursor: pointer;
@@ -999,4 +1003,53 @@ body {
     rgba(2, 6, 23, 0.28),
     rgba(2, 6, 23, 0.52)
   );
+}
+
+/* === GAME FEEL / GLASS EFFECT === */
+
+.card,
+.dragon-chamber,
+.main-action-box,
+.stat-card,
+.resource-card,
+.fantasy-dragon-card {
+  backdrop-filter: blur(8px);
+}
+
+.fantasy-dragon-card {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.62),
+    rgba(15, 23, 42, 0.42)
+  );
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+/* Işık yansıması efekti */
+.main-action-box::before,
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.06),
+    transparent 35%,
+    transparent 65%,
+    rgba(255,255,255,0.03)
+  );
+}
+
+/* gerekli ayar */
+.hero-card,
+.main-action-box,
+.fantasy-dragon-card,
+.card,
+.stat-card {
+  position: relative;
+  overflow: hidden;
 }
