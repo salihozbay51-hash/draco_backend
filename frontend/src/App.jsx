@@ -658,34 +658,72 @@ function resetDepositForm() {
         </div>
 
         <div className="dragon-stage">
-          <div className="dragon-stage-title">🔥 Dragon Chamber</div>
+  <div className="dragon-stage-topbar">
+    <div className="stage-resource-pill eggs-pill">
+      🥚 {profile?.total_eggs_ay ?? 0}
+    </div>
 
-          <div className="dragon-stage-grid">
-          <div className="dragon-actions-row">
-  <button
-    className="dragon-action-btn collect-side-btn"
-    onClick={() => {
-      playClick();
-      handleCollect();
-    }}
-    disabled={collecting}
-  >
-    {collecting ? t("collecting") : "Yumurtaları Topla"}
-  </button>
+    <div className="dragon-stage-title">🔥 Dragon Chamber</div>
 
-  <button
-    className="dragon-action-btn convert-side-btn"
-    onClick={() => {
-      playClick();
-      handleConvert();
-    }}
-    disabled={converting}
-  >
-    {converting ? t("converting") : "AY=USDT ÇEVİR"}
-  </button>
-</div>
+    <div className="stage-resource-pill usdt-pill">
+      💰 {profile?.usdt_balance ?? 0}
+    </div>
+  </div>
 
-<div className="dragon-bottom-actions">
+  <div className="dragon-stage-grid">
+    {profile?.dragons?.length ? (
+      profile.dragons.map((dragon) => {
+        const visual = dragonVisualMap[dragon.dragon_code] || {
+          icon: "🐲",
+          title: prettyCode(dragon.dragon_code),
+          accent: "#b8924a",
+          bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
+        };
+
+        return (
+          <div
+            key={dragon.id}
+            className="dragon-slot"
+            style={{
+              borderColor: visual.accent,
+              background: visual.bg,
+            }}
+          >
+            <div className="dragon-slot-top">
+              <div
+                className="dragon-slot-image-wrap"
+                style={{ borderColor: visual.accent }}
+              >
+                <img
+                  src={dragonImages[dragon.dragon_code] || minikImg}
+                  alt={visual.title}
+                  className="dragon-slot-img"
+                />
+              </div>
+
+              <div className="dragon-slot-meta">
+                <div
+                  className="dragon-slot-title"
+                  style={{ color: visual.accent }}
+                >
+                  {visual.title}
+                </div>
+                <div className="tiny">Lv. {dragon.level}</div>
+              </div>
+            </div>
+
+            <div className="dragon-slot-stats">
+              <span>🥚 {dragon.eggs_per_day}/day</span>
+              <span>⏳ {dragon.remaining_days}d</span>
+            </div>
+          </div>
+        );
+      })
+    ) : (
+      <div className="tiny">Henüz dragonun yok 🐣</div>
+    )}
+  </div>
+        <div className="dragon-bottom-actions">
   <button
     className="bottom-action-btn collect-bottom-btn"
     onClick={() => {
@@ -712,57 +750,7 @@ function resetDepositForm() {
 <div className="dragon-actions-foot tiny">
   500 AY = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
 </div>
-
-<div className="dragon-actions-foot tiny">
-  500 AY = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
 </div>
-            {profile?.dragons?.length ? (
-              profile.dragons.map((dragon) => {
-                const visual = dragonVisualMap[dragon.dragon_code] || {
-                  icon: "🐲",
-                  title: prettyCode(dragon.dragon_code),
-                  accent: "#b8924a",
-                  bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
-                };
-
-                return (
-                  <div
-                    key={dragon.id}
-                    className="dragon-slot"
-                    style={{
-                      borderColor: visual.accent,
-                      background: visual.bg,
-                    }}
-                  >
-                    <div className="dragon-slot-top">
-                      <div className="dragon-slot-image-wrap" style={{ borderColor: visual.accent }}>
-                        <img
-                          src={dragonImages[dragon.dragon_code] || minikImg}
-                          alt={visual.title}
-                          className="dragon-slot-img"
-                        />
-                      </div>
-
-                      <div className="dragon-slot-meta">
-                        <div className="dragon-slot-title" style={{ color: visual.accent }}>
-                          {visual.title}
-                        </div>
-                        <div className="tiny">Lv. {dragon.level}</div>
-                      </div>
-                    </div>
-
-                    <div className="dragon-slot-stats">
-                      <span>🥚 {dragon.eggs_per_day}/day</span>
-                      <span>⏳ {dragon.remaining_days}d</span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="tiny">Henüz dragonun yok 🐣</div>
-            )}
-          </div>
-        </div>
       </>
     )}
   </>
