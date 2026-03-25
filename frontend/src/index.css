@@ -778,3 +778,225 @@ body {
   pointer-events: none;
   z-index: 0;
 }
+
+/* === COMPACT UI PATCH === */
+
+.container {
+  gap: 10px;
+  max-width: 420px;
+  padding: 10px;
+}
+
+.card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(6px);
+}
+
+.compact-card {
+  padding: 12px;
+}
+
+.hero-card {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.hero-header h1 {
+  font-size: 16px;
+}
+
+.stat-badge {
+  min-width: 74px;
+  padding: 8px 10px;
+  border-radius: 14px;
+}
+
+.stat-badge strong {
+  font-size: 16px;
+}
+
+.settings-row {
+  margin-top: 10px;
+  gap: 8px;
+}
+
+.settings-group {
+  gap: 8px;
+}
+
+.small-control-btn {
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  min-height: 34px;
+}
+
+.compact-toggle-btn {
+  min-width: 82px;
+  flex: 0 0 auto;
+}
+
+.language-row.compact-language-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.lang-single-btn {
+  min-width: auto;
+  padding: 7px 10px;
+}
+
+.stats-grid {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.resource-card {
+  min-height: 72px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.stat-card {
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.stat-card h2 {
+  font-size: 18px;
+  margin: 2px 0;
+}
+
+.main-action-box {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.main-action-top {
+  margin-bottom: 8px;
+}
+
+.main-action-title {
+  font-size: 14px;
+}
+
+.pending-pill {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.collect-btn,
+.convert-btn,
+.secondary-btn,
+.buy-btn {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 14px;
+  margin-top: 10px;
+}
+
+.convert-note,
+.last-collect {
+  margin-top: 8px;
+}
+
+.section-title-main {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.dragon-chamber {
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.dragon-grid {
+  gap: 8px;
+}
+
+.fantasy-dragon-card {
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.dragon-image-wrap {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 12px;
+}
+
+.dragon-img {
+  width: 44px;
+  height: 44px;
+}
+
+.dragon-title {
+  font-size: 14px;
+}
+
+.dragon-stats {
+  margin-top: 6px;
+  gap: 2px;
+}
+
+.compact-section-toggle {
+  margin-top: 0;
+  padding: 10px 12px;
+}
+
+.referral-panel-inner {
+  margin-top: 6px;
+}
+
+.compact-ref-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.compact-stat-card {
+  min-height: 78px;
+  padding: 10px;
+}
+
+.compact-copy-btn {
+  padding: 10px 12px;
+}
+
+.bottom-nav {
+  padding: 6px;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.88);
+}
+
+.bottom-nav .nav-card {
+  min-height: 58px;
+  padding: 8px 6px;
+  border-radius: 12px;
+}
+
+.bottom-nav .nav-title {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.bottom-nav .muted {
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.app-content {
+  padding-bottom: 92px;
+}
+
+.app-shell::after {
+  background: linear-gradient(
+    to bottom,
+    rgba(2, 6, 23, 0.28),
+    rgba(2, 6, 23, 0.52)
+  );
+}

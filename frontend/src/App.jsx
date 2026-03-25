@@ -94,6 +94,7 @@ export default function App() {
   const bgmRef = useRef(null);
   const t = (key) => translate(lang, key);
   const [floatingRewards, setFloatingRewards] = useState([]);
+  const [showReferralPanel, setShowReferralPanel] = useState(false);
 
 function handleChangeLanguage(nextLang) {
   setLang(nextLang);
@@ -618,39 +619,40 @@ function resetDepositForm() {
   <div className="settings-row">
     <div className="settings-group">
       <button
-        className="small-control-btn"
+        className="small-control-btn compact-toggle-btn"
         onClick={() => {
           playClick();
           setMusicOn((prev) => !prev);
         }}
       >
-        {musicOn ? t("musicOn") : t("musicOff")}
+        {musicOn ? "🎵 ON" : "🎵 OFF"}
       </button>
 
       <button
-        className="small-control-btn"
+        className="small-control-btn compact-toggle-btn"
         onClick={() => {
           playClick();
           setSfxOn((prev) => !prev);
         }}
       >
-        {sfxOn ? t("clickOn") : t("clickOff")}
+        {sfxOn ? "🔘 ON" : "🔘 OFF"}
       </button>
     </div>
 
     <div className="language-row">
-      {languageOptions.map((item) => (
+      <div className="language-row compact-language-row">
         <button
-          key={item.code}
-          className={`lang-btn ${lang === item.code ? "lang-btn-active" : ""}`}
+          className="small-control-btn lang-single-btn"
           onClick={() => {
             playClick();
-            handleChangeLanguage(item.code);
+            const currentIndex = languageOptions.findIndex((item) => item.code === lang);
+            const nextIndex = (currentIndex + 1) % languageOptions.length;
+            handleChangeLanguage(languageOptions[nextIndex].code);
           }}
         >
-          {item.flag} {item.code.toUpperCase()}
+          🌐 {languageOptions.find((item) => item.code === lang)?.flag} {lang.toUpperCase()}
         </button>
-      ))}
+      </div>
     </div>
   </div>
 </div>
@@ -1130,62 +1132,71 @@ function resetDepositForm() {
 )}
 
 {refs && (
-  <>
-    {/* INVITE LINK */}
-    <div className="card">
-      <div className="section-head">
-        <h3>{t("inviteFriends")}</h3>
-        <span className="muted">{t("referralLink")}</span>
-      </div>
-      <input
-        value={inviteLink}
-        readOnly
-        className="invite-input"
-        style={{ marginTop: 10 }}
-      />
+  <div className="card compact-card">
+    <button
+      className="secondary-btn compact-section-toggle"
+      onClick={() => {
+        playClick();
+        setShowReferralPanel((prev) => !prev);
+      }}
+    >
+      👥 Referanslar {showReferralPanel ? "▲" : "▼"}
+    </button>
 
-      <button
-        className="collect-btn"
-        style={{ marginTop: 12 }}
-        onClick={async () => {
-          playClick();
-          try {
-            await navigator.clipboard.writeText(inviteLink);
-            alert("Link kopyalandı!");
-          } catch {
-            alert("Kopyalama başarısız");
-          }
-        }}
-      >
-        {t("copyLink")}
-      </button>
-    </div>
-
-    {/* REFERRAL STATS */}
-    <div className="card">
-      <div className="section-head">
-        <h3>{t("referrals")}</h3>
-        <span className="muted">{t("threeLevels")}</span>
-      </div>
-
-      <div className="stats-grid resource-grid">
-        <div className="stat-card">
-          <p className="muted">{t("level1")}</p>
-          <h2>{refs.level1}</h2>
+    {showReferralPanel && (
+      <div className="referral-panel-inner">
+        <div className="section-head" style={{ marginTop: 14 }}>
+          <h3>{t("inviteFriends")}</h3>
+          <span className="muted">{t("referralLink")}</span>
         </div>
 
-        <div className="stat-card">
-          <p className="muted">{t("level2")}</p>
-          <h2>{refs.level2}</h2>
+        <input
+          value={inviteLink}
+          readOnly
+          className="invite-input"
+          style={{ marginTop: 10 }}
+        />
+
+        <button
+          className="collect-btn compact-copy-btn"
+          style={{ marginTop: 12 }}
+          onClick={async () => {
+            playClick();
+            try {
+              await navigator.clipboard.writeText(inviteLink);
+              alert("Link kopyalandı!");
+            } catch {
+              alert("Kopyalama başarısız");
+            }
+          }}
+        >
+          {t("copyLink")}
+        </button>
+
+        <div className="section-head" style={{ marginTop: 18 }}>
+          <h3>{t("referrals")}</h3>
+          <span className="muted">{t("threeLevels")}</span>
         </div>
 
-        <div className="stat-card">
-  <p className="muted">{t("level3")}</p>
-  <h2>{refs.level3}</h2>
-</div>
+        <div className="stats-grid compact-ref-grid">
+          <div className="stat-card compact-stat-card">
+            <p className="muted">{t("level1")}</p>
+            <h2>{refs.level1}</h2>
+          </div>
+
+          <div className="stat-card compact-stat-card">
+            <p className="muted">{t("level2")}</p>
+            <h2>{refs.level2}</h2>
+          </div>
+
+          <div className="stat-card compact-stat-card">
+            <p className="muted">{t("level3")}</p>
+            <h2>{refs.level3}</h2>
+          </div>
+        </div>
       </div>
-    </div>
-  </>
+    )}
+  </div>
 )}
 
 <div className="bottom-grid bottom-nav">
