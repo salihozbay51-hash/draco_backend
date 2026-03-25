@@ -657,75 +657,37 @@ function resetDepositForm() {
           </div>
         </div>
 
-        <div className="resource-hud-bar">
-          <div className="resource-pill">
-            <span className="resource-icon">🥚</span>
-            <div>
-              <div className="resource-label">{t("eggs")}</div>
-              <strong>{profile?.total_eggs_ay ?? 0}</strong>
-            </div>
-          </div>
-
-          <div className="resource-pill">
-            <span className="resource-icon">💰</span>
-            <div>
-              <div className="resource-label">USDT</div>
-              <strong>{profile?.usdt_balance ?? 0}</strong>
-            </div>
-          </div>
-
-          <div className="resource-pill pending-resource">
-            <span className="resource-icon">✨</span>
-            <div>
-              <div className="resource-label">{t("pendingEggs")}</div>
-              <strong>{profile?.pending_eggs_ay ?? 0}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="action-zone">
-          <div className="action-zone-head">
-            <div>
-              <div className="action-zone-title">⚔️ Main Action</div>
-              <div className="tiny">Collect production from your dragons</div>
-            </div>
-
-            <div className="action-zone-pending">
-              +{profile?.pending_eggs_ay ?? 0} AY
-            </div>
-          </div>
-
-          <button
-            className="collect-mega-btn"
-            onClick={() => {
-              playClick();
-              handleCollect();
-            }}
-            disabled={collecting}
-          >
-            {collecting ? t("collecting") : t("collectEggs")}
-          </button>
-
-          <button
-            className="convert-mini-btn"
-            onClick={() => {
-              playClick();
-              handleConvert();
-            }}
-            disabled={converting}
-          >
-            {converting ? t("converting") : t("convertEggs")}
-          </button>
-
-          <div className="action-zone-foot tiny">
-            500 eggs = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
-          </div>
-        </div>
-
         <div className="dragon-stage">
           <div className="dragon-stage-title">🔥 Dragon Chamber</div>
 
           <div className="dragon-stage-grid">
+          <div className="dragon-actions-row">
+  <button
+    className="dragon-action-btn collect-side-btn"
+    onClick={() => {
+      playClick();
+      handleCollect();
+    }}
+    disabled={collecting}
+  >
+    {collecting ? t("collecting") : "Yumurtaları Topla"}
+  </button>
+
+  <button
+    className="dragon-action-btn convert-side-btn"
+    onClick={() => {
+      playClick();
+      handleConvert();
+    }}
+    disabled={converting}
+  >
+    {converting ? t("converting") : "AY=USDT ÇEVİR"}
+  </button>
+</div>
+
+<div className="dragon-actions-foot tiny">
+  500 AY = 1 USDT · {t("lastCollect")}: {formatDate(profile?.last_collect_at ?? null)}
+</div>
             {profile?.dragons?.length ? (
               profile.dragons.map((dragon) => {
                 const visual = dragonVisualMap[dragon.dragon_code] || {
