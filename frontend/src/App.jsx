@@ -846,49 +846,69 @@ return (
         <div className="dragon-chamber">
           <div className="section-title-main">🏪 Draco Market</div>
 
-          <div className="dragon-grid">
-            {marketDragons.map((dragon) => (
-              <div
-                key={dragon.code}
-                className="dragon-card fantasy-dragon-card market-card"
-              >
-                <div className="market-card-top">
-                  <div className="market-dragon-head">
-                    <div className="market-dragon-image-wrap">
-                      <img
-                        src={dragonImages[dragon.code] || minikImg}
-                        alt={prettyCode(dragon.code)}
-                        className="dragon-img"
-                      />
-                    </div>
+          <div className="market-slot-list">
+  {marketDragons.map((dragon) => {
+    const visual = dragonVisualMap[dragon.code] || {
+      accent: "#b8924a",
+      bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
+      title: prettyCode(dragon.code),
+    };
 
-                    <div>
-                      <div className="market-card-title">
-                       {prettyCode(dragon.code)}
-                      </div>
-
-                      <div className="market-price">
-                        💰 {dragon.price_usdt} USDT
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="tiny">🥚 {dragon.eggs_per_day} eggs/day</div>
-              <div className="tiny">⏳ {dragon.lifetime_days} days</div>
-
-                <button
-                  className="buy-btn"
-                  onClick={() => {
-                    playClick();
-                    buyDragon(dragon.code);
-                  }}
-                >
-                  Buy
-                </button>
-              </div>
-            ))}
+    return (
+      <div
+        key={dragon.code}
+        className="market-slot"
+        style={{
+          borderColor: visual.accent,
+          background: visual.bg,
+        }}
+      >
+        <div className="market-slot-left">
+          <div
+            className="market-slot-image-wrap"
+            style={{ borderColor: visual.accent }}
+          >
+            <img
+              src={dragonImages[dragon.code] || minikImg}
+              alt={prettyCode(dragon.code)}
+              className="market-slot-img"
+            />
           </div>
+        </div>
+
+        <div className="market-slot-center">
+          <div
+            className="market-slot-title"
+            style={{ color: visual.accent }}
+          >
+            {prettyCode(dragon.code)}
+          </div>
+
+          <div className="market-slot-price">
+            💰 {dragon.price_usdt} USDT
+          </div>
+
+          <div className="market-slot-stats">
+            <span>🥚 {dragon.eggs_per_day}/day</span>
+            <span>⏳ {dragon.lifetime_days}d</span>
+          </div>
+        </div>
+
+        <div className="market-slot-right">
+          <button
+            className="market-buy-btn"
+            onClick={() => {
+              playClick();
+              buyDragon(dragon.code);
+            }}
+          >
+            Buy
+          </button>
+        </div>
+      </div>
+    );
+  })}
+</div>
 
           <button
             className="secondary-btn"

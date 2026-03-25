@@ -1620,3 +1620,154 @@ body {
   opacity: 0.75;
   margin-top: 2px;
 }
+
+/* ===== MARKET SLOT REWORK ===== */
+
+.market-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.market-slot {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 10px 22px rgba(0,0,0,0.16),
+    inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+.market-slot-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.market-slot-image-wrap {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+}
+
+.market-slot-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.28));
+}
+
+.market-slot-center {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.market-slot-title {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.market-slot-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #b8f0c7;
+}
+
+.market-slot-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #d9e6f5;
+  font-size: 12px;
+}
+
+.market-slot-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.market-buy-btn {
+  min-width: 84px;
+  border: none;
+  border-radius: 14px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff7da;
+  cursor: pointer;
+  background: linear-gradient(180deg, #36a96d, #247d52);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.market-buy-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.market-buy-btn:active {
+  transform: scale(0.96);
+}
+
+.market-buy-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .market-slot {
+    grid-template-columns: 64px 1fr auto;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .market-slot-image-wrap {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+  }
+
+  .market-slot-img {
+    width: 46px;
+    height: 46px;
+  }
+
+  .market-slot-title {
+    font-size: 15px;
+  }
+
+  .market-slot-price {
+    font-size: 13px;
+  }
+
+  .market-slot-stats {
+    font-size: 11px;
+    gap: 8px;
+  }
+
+  .market-buy-btn {
+    min-width: 74px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
