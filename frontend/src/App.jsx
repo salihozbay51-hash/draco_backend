@@ -584,6 +584,39 @@ function resetDepositForm() {
 }, [depositOrder?.order_id, depositOrder?.status]);
 
   const activeCount = useMemo(() => profile?.dragons?.length || 0, [profile]);
+  const groupedDragons = useMemo(() => {
+  const dragons = profile?.dragons || [];
+  const groups = {};
+
+  for (const dragon of dragons) {
+    const code = dragon.dragon_code;
+
+    if (!groups[code]) {
+      groups[code] = {
+        dragon_code: code,
+        count: 0,
+        total_eggs_per_day: 0,
+        min_remaining_days: Number.POSITIVE_INFINITY,
+        levels: [],
+        items: [],
+      };
+    }
+
+    groups[code].count += 1;
+    groups[code].total_eggs_per_day += Number(dragon.eggs_per_day || 0);
+    groups[code].min_remaining_days = Math.min(
+      groups[code].min_remaining_days,
+      Number(dragon.remaining_days || 0)
+    );
+    groups[code].levels.push(Number(dragon.level || 1));
+    groups[code].items.push(dragon);
+  }
+
+  return Object.values(groups).map((group) => ({
+    ...group,
+    levelsLabel: [...new Set(group.levels)].sort((a, b) => a - b).join(", "),
+  }));
+}, [profile]);
 
   const inviteLink = telegramId
     ? `https://t.me/dracokingdom_bot?start=${telegramId}`
@@ -673,14 +706,53 @@ function resetDepositForm() {
   </div>
 
   <div className="dragon-stage-grid">
-    {profile?.dragons?.length ? (
-      profile.dragons.map((dragon) => {
-        const visual = dragonVisualMap[dragon.dragon_code] || {
-          icon: "🐲",
-          title: prettyCode(dragon.dragon_code),
-          accent: "#b8924a",
-          bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
-        };
+    {groupedDragons.length ? (
+      groupedDragons.map((group) => {
+const visual = dragonVisualMap[group.dragon_code] || {
+  icon: "🐲",
+  title: prettyCode(group.dragon_code),
+  accent: "#b8924a",
+  bg: "linear-gradient(135deg, rgba(19,34,53,0.55), rgba(15,23,42,0.28))",
+};
+
+return (
+  <div
+    key={group.dragon_code}
+    className="dragon-slot"
+    style={{
+      borderColor: visual.accent,
+      background: visual.bg,
+    }}
+  >
+    <div className="dragon-slot-top">
+      <div
+        className="dragon-slot-image-wrap"
+        style={{ borderColor: visual.accent }}
+      >
+        <img
+          src={dragonImages[group.dragon_code] || minikImg}
+          alt={visual.title}
+          className="dragon-slot-img"
+        />
+      </div>
+
+      <div className="dragon-slot-meta">
+        <div
+          className="dragon-slot-title"
+          style={{ color: visual.accent }}
+        >
+          {visual.title} {group.count > 1 ? `x${group.count}` : ""}
+        </div>
+        <div className="tiny">Lv. {group.levelsLabel}</div>
+      </div>
+    </div>
+
+    <div className="dragon-slot-stats">
+      <span>🥚 {group.total_eggs_per_day}/day</span>
+      <span>⏳ {group.min_remaining_days}d</span>
+    </div>
+  </div>
+);
 
         return (
           <div
@@ -727,26 +799,38 @@ function resetDepositForm() {
   </div>
         <div className="dragon-bottom-actions">
   <button
-    className="bottom-action-btn collect-bottom-btn"
-    onClick={() => {
-      playClick();
-      handleCollect();
-    }}
-    disabled={collecting}
-  >
+  className="bottom-action-btn collect-bottom-btn"
+  onClick={() => {
+    playClick();
+    handleCollect();
+  }}
+  disabled={collecting}
+>
+  <div className="btn-main">
     {collecting ? t("collecting") : "Yumurtaları Topla"}
-  </button>
+  </div>
+
+  <div className="btn-sub">
+    Bekleyen: {profile?.pending_eggs_ay ?? 0} AY
+  </div>
+</button>
 
   <button
-    className="bottom-action-btn convert-bottom-btn"
-    onClick={() => {
-      playClick();
-      handleConvert();
-    }}
-    disabled={converting}
-  >
+  className="bottom-action-btn convert-bottom-btn"
+  onClick={() => {
+    playClick();
+    handleConvert();
+  }}
+  disabled={converting}
+>
+  <div className="btn-main">
     {converting ? t("converting") : "AY=USDT ÇEVİR"}
-  </button>
+  </div>
+
+  <div className="btn-sub">
+    500 AY = 1 USDT
+  </div>
+</button>
 </div>
 
 <div className="dragon-actions-foot tiny">

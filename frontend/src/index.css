@@ -1608,3 +1608,15 @@ body {
       0 0 16px rgba(54, 169, 109, 0.22);
   }
 }
+
+.btn-main {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.btn-sub {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
