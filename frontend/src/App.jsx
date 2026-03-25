@@ -95,6 +95,7 @@ export default function App() {
   const t = (key) => translate(lang, key);
   const [floatingRewards, setFloatingRewards] = useState([]);
   const [showReferralPanel, setShowReferralPanel] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
 function handleChangeLanguage(nextLang) {
   setLang(nextLang);
@@ -753,45 +754,6 @@ return (
     </div>
   </div>
 );
-
-        return (
-          <div
-            key={dragon.id}
-            className="dragon-slot"
-            style={{
-              borderColor: visual.accent,
-              background: visual.bg,
-            }}
-          >
-            <div className="dragon-slot-top">
-              <div
-                className="dragon-slot-image-wrap"
-                style={{ borderColor: visual.accent }}
-              >
-                <img
-                  src={dragonImages[dragon.dragon_code] || minikImg}
-                  alt={visual.title}
-                  className="dragon-slot-img"
-                />
-              </div>
-
-              <div className="dragon-slot-meta">
-                <div
-                  className="dragon-slot-title"
-                  style={{ color: visual.accent }}
-                >
-                  {visual.title}
-                </div>
-                <div className="tiny">Lv. {dragon.level}</div>
-              </div>
-            </div>
-
-            <div className="dragon-slot-stats">
-              <span>🥚 {dragon.eggs_per_day}/day</span>
-              <span>⏳ {dragon.remaining_days}d</span>
-            </div>
-          </div>
-        );
       })
     ) : (
       <div className="tiny">Henüz dragonun yok 🐣</div>
@@ -1115,7 +1077,7 @@ return (
   </div>
 )}
 
-    {page === "leaderboard" && (
+   {page === "leaderboard" && (
   <div className="dragon-chamber">
     <div className="section-title-main">{t("leaderboardTitle")}</div>
 
@@ -1211,82 +1173,58 @@ return (
   </div>
 )}
 
-{false && refs && (
-  <div className="card compact-card">
+    {page === "referrals" && (
+  <div className="dragon-chamber">
+    <div className="section-title-main">👥 Referans</div>
+
+    <div className="dragon-card">
+      <div className="tiny">Referans linkin</div>
+      <input
+        value={inviteLink}
+        readOnly
+        className="invite-input"
+        style={{ marginTop: 10 }}
+      />
+
+      <button
+        className="collect-btn"
+        style={{ marginTop: 12 }}
+        onClick={async () => {
+          playClick();
+          try {
+            await navigator.clipboard.writeText(inviteLink);
+            alert("Link kopyalandı!");
+          } catch {
+            alert("Kopyalama başarısız");
+          }
+        }}
+      >
+        Linki Kopyala
+      </button>
+    </div>
+
     <button
-      className="secondary-btn compact-section-toggle"
+      className="secondary-btn"
+      style={{ marginTop: 14 }}
       onClick={() => {
         playClick();
-        setShowReferralPanel((prev) => !prev);
+        setPage("home");
       }}
     >
-      👥 Referanslar {showReferralPanel ? "▲" : "▼"}
+      Back to Home
     </button>
-
-    {showReferralPanel && (
-      <div className="referral-panel-inner">
-        <div className="section-head" style={{ marginTop: 14 }}>
-          <h3>{t("inviteFriends")}</h3>
-          <span className="muted">{t("referralLink")}</span>
-        </div>
-
-        <input
-          value={inviteLink}
-          readOnly
-          className="invite-input"
-          style={{ marginTop: 10 }}
-        />
-
-        <button
-          className="collect-btn compact-copy-btn"
-          style={{ marginTop: 12 }}
-          onClick={async () => {
-            playClick();
-            try {
-              await navigator.clipboard.writeText(inviteLink);
-              alert("Link kopyalandı!");
-            } catch {
-              alert("Kopyalama başarısız");
-            }
-          }}
-        >
-          {t("copyLink")}
-        </button>
-
-        <div className="section-head" style={{ marginTop: 18 }}>
-          <h3>{t("referrals")}</h3>
-          <span className="muted">{t("threeLevels")}</span>
-        </div>
-
-        <div className="stats-grid compact-ref-grid">
-          <div className="stat-card compact-stat-card">
-            <p className="muted">{t("level1")}</p>
-            <h2>{refs.level1}</h2>
-          </div>
-
-          <div className="stat-card compact-stat-card">
-            <p className="muted">{t("level2")}</p>
-            <h2>{refs.level2}</h2>
-          </div>
-
-          <div className="stat-card compact-stat-card">
-            <p className="muted">{t("level3")}</p>
-            <h2>{refs.level3}</h2>
-          </div>
-        </div>
-      </div>
-    )}
   </div>
 )}
+
 
 <div className="bottom-grid bottom-nav">
   <button
     className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
     onClick={() => {
-    playClick();
-    setPage("market");
-  }}
->
+      playClick();
+      setPage("market");
+    }}
+  >
     <span className="nav-title">{t("market")}</span>
     <span className="muted">{t("buyNewDragons")}</span>
   </button>
@@ -1324,8 +1262,46 @@ return (
     <span className="nav-title">{t("leaderboard")}</span>
     <span className="muted">{t("topPlayers")}</span>
   </button>
-</div>
 
+  <div className="more-menu-wrap">
+    <button
+      className={`nav-card ${showMoreMenu ? "nav-card-active" : ""}`}
+      onClick={() => {
+        playClick();
+        setShowMoreMenu((prev) => !prev);
+      }}
+    >
+      <span className="nav-title">☰ Menü</span>
+      <span className="muted">Diğer</span>
+    </button>
+
+    {showMoreMenu && (
+      <div className="more-menu-popup">
+        <button
+          className="more-menu-item"
+          onClick={() => {
+            playClick();
+            setShowMoreMenu(false);
+            setPage("referrals");
+          }}
+        >
+          👥 Referans
+        </button>
+
+        <button
+          className="more-menu-item"
+          onClick={() => {
+            playClick();
+            setShowMoreMenu(false);
+            window.open("https://t.me/Birdparadisevbot", "_blank");
+          }}
+        >
+          🆘 Support
+        </button>
+      </div>
+    )}
+  </div>
+</div>
     </div>
   </div>
 );

@@ -233,13 +233,13 @@ button {
 
 .bottom-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
 
 @media (max-width: 480px) {
   .bottom-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .bottom-nav .nav-card {
@@ -1770,4 +1770,39 @@ body {
     padding: 10px 12px;
     font-size: 13px;
   }
+}
+
+.more-menu-wrap {
+  position: relative;
+}
+
+.more-menu-popup {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(10, 18, 31, 0.96);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.28);
+  z-index: 50;
+}
+
+.more-menu-item {
+  border: none;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #132235;
+  color: #fff;
+}
+
+.more-menu-item:active {
+  transform: scale(0.97);
 }
