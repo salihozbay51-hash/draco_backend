@@ -777,6 +777,8 @@ function resetDepositForm() {
     </div>
   </>
 )}
+  </>
+)}
 
       {page === "market" && (
         <div className="dragon-chamber">
@@ -1185,8 +1187,7 @@ function resetDepositForm() {
     </div>
   </>
 )}
-  </>
-)}
+
 <div className="bottom-grid bottom-nav">
   <button
     className={`nav-card ${page === "market" ? "nav-card-active" : ""}`}
