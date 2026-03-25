@@ -14,6 +14,9 @@ import requests
 
 API_URL = "https://dracobackend-production-6b8f.up.railway.app"
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WELCOME_IMAGE = os.path.join(BASE_DIR, "assets", "welcome.png")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = str(update.effective_user.id)
@@ -44,8 +47,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        "🐉 Draco Kingdom\n\nWelcome Dragon Master.\n\nOyuna başlamak için aşağıdaki butona bas.",
+    with open(WELCOME_IMAGE, "rb") as photo:
+    await update.message.reply_photo(
+        photo=photo,
+        caption=(
+    "🐉 *Draco Kingdom*\n\n"
+    "Merhaba Dragon Master!\n\n"
+    "Dragon satın al, altın yumurtalarını gerçek paraya dönüştür.\n"
+    "Arkadaşlarını davet et, kazancını katla.\n\n"
+    "👇 Oyuna başlamak için butona bas."
+),
+        parse_mode="Markdown",
         reply_markup=reply_markup
     )
     
