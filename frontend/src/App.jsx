@@ -1313,7 +1313,7 @@ return (
           onClick={() => {
             playClick();
             setShowMoreMenu(false);
-            window.open("https://t.me/Birdparadisevbot", "_blank");
+            window.open("https://t.me/DracoKingdomSupport", "_blank");
           }}
         >
           🆘 Support
