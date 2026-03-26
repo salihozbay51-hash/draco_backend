@@ -1203,6 +1203,26 @@ return (
       </button>
     </div>
 
+    <div className="stats-grid compact-ref-grid" style={{ marginTop: 14 }}>
+      <div className="stat-card compact-stat-card">
+        <p className="muted">Seviye 1</p>
+        <h2>{refs?.level1 ?? 0}</h2>
+        <div className="tiny">%8 kazanç</div>
+      </div>
+
+      <div className="stat-card compact-stat-card">
+        <p className="muted">Seviye 2</p>
+        <h2>{refs?.level2 ?? 0}</h2>
+        <div className="tiny">%3 kazanç</div>
+      </div>
+
+      <div className="stat-card compact-stat-card">
+        <p className="muted">Seviye 3</p>
+        <h2>{refs?.level3 ?? 0}</h2>
+        <div className="tiny">%1 kazanç</div>
+      </div>
+    </div>
+
     <button
       className="secondary-btn"
       style={{ marginTop: 14 }}
