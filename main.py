@@ -1589,6 +1589,22 @@ def admin_list_withdraws(status: str = "pending", x_admin_token: str | None = He
         )
         return {"items": [dict(r) for r in cur.mappings().all()]}
 
+@app.get("/admin/stats")
+def admin_stats(x_admin_token: str | None = Header(default=None)):
+    require_admin(x_admin_token)
+
+    with engine.begin() as conn:
+        total_users = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
+        total_withdraws = conn.execute(text("SELECT COUNT(*) FROM withdraw_requests")).scalar()
+        pending_withdraws = conn.execute(
+            text("SELECT COUNT(*) FROM withdraw_requests WHERE status = 'pending'")
+        ).scalar()
+
+    return {
+        "total_users": int(total_users or 0),
+        "total_withdraw_requests": int(total_withdraws or 0),
+        "pending_withdraw_requests": int(pending_withdraws or 0),
+    }
 
 @app.post("/admin/withdraw/{withdraw_id}/approve")
 def admin_approve_withdraw(withdraw_id: int, body: AdminActionBody, x_admin_token: str | None = Header(default=None)):
