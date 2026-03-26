@@ -8,7 +8,9 @@ import efsaneImg from "./assets/dragons/efsane.png";
 import bgImage from "./assets/backgrounds/background.webp";
 import { getSavedLanguage, saveLanguage, translate, languageOptions } from "./i18n";
 
-const API_BASE = "https://dracobackend-production-6b8f.up.railway.app";
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://dracobackend-production-6b8f.up.railway.app";
 
 function prettyCode(code) {
   if (!code) return "Dragon";
