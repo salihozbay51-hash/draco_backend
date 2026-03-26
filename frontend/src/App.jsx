@@ -144,12 +144,17 @@ function handleChangeLanguage(nextLang) {
   }
 
   async function ensureRegistered(id) {
+  const urlRef = new URLSearchParams(window.location.search).get("ref");
+
   const res = await fetch(`${API_BASE}/users/register`, {
     method: "POST",
     headers: getAuthHeaders({
       "Content-Type": "application/json",
     }),
-    body: JSON.stringify({ telegram_id: id }),
+    body: JSON.stringify({
+      telegram_id: id,
+      referrer_id: urlRef || null,
+    }),
   });
 
   if (!res.ok) {

@@ -36,14 +36,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="🎮 Play Game",
-                web_app=WebAppInfo(url=WEB_APP_URL)
-            )
-        ]
+    play_url = WEB_APP_URL
+if referrer:
+    play_url = f"{WEB_APP_URL}?ref={referrer}"
+
+keyboard = [
+    [
+        InlineKeyboardButton(
+            text="🎮 Play Game",
+            web_app=WebAppInfo(url=play_url)
+        )
     ]
+]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
